@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight, BadgeDollarSign, Percent, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { RateHistoryChart } from "@/components/charts/rate-history-chart";
 import { UtilizationBar } from "@/components/markets/utilization-bar";
 import { QuickSwapCard } from "@/components/swap/quick-swap-card";
@@ -13,6 +14,7 @@ import { formatUsd } from "@/lib/math";
 export function Dashboard() {
   const { data: markets = [], isLoading } = useMarkets();
   const { data: positions = [] } = usePositions();
+  const [days, setDays] = useState(90);
   const primaryMarket = markets[0];
   const tvl = markets.reduce((sum, market) => sum + market.totalNotional, 0n);
 
@@ -55,8 +57,19 @@ export function Dashboard() {
               <ArrowUpRight className="size-4" />
             </Link>
           </div>
+          <div className="mt-5 flex gap-2">
+            {[30, 90, 365].map((option) => (
+              <button
+                key={option}
+                className={`rounded-md px-3 py-1.5 text-sm ${days === option ? "bg-sky-500 text-slate-950" : "bg-slate-950 text-slate-300"}`}
+                onClick={() => setDays(option)}
+              >
+                {option === 365 ? "1y" : `${option}d`}
+              </button>
+            ))}
+          </div>
           <div className="mt-6">
-            <RateHistoryChart marketId={primaryMarket.id} days={90} />
+            <RateHistoryChart marketId={primaryMarket.id} days={days} />
           </div>
         </section>
 

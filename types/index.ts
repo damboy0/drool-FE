@@ -46,3 +46,38 @@ export type RatePoint = {
   floatingRate: number;
   fixedRate: number;
 };
+
+export type LiquidationCandidate = {
+  positionId: bigint;
+  marketId: string;
+  asset: AssetSymbol;
+  notional: bigint;
+  marginHealth: number;
+  bountyUSD: number;
+  estimatedGasUSD: number;
+  contractAddress: Address;
+};
+
+export type LiquidationEvent = {
+  id: string;
+  positionId: bigint;
+  liquidator: Address;
+  bountyPaid: bigint;
+  timestamp: number;
+};
+
+export type PositionNFT = {
+  tokenId: bigint;
+  owner: Address;
+  marketId: string;
+  positionId: bigint;
+  svg: string;
+};
+
+export type MarketStats = {
+  totalOpenNotional: bigint;
+  activePositions: number;
+  averageFixedRate: number;
+  aaveYieldDeployed: bigint;
+  liquidationBountyPool: bigint;
+};

@@ -1,10 +1,17 @@
 import {
   mockMarkets,
+  mockMarketStats,
   mockMtM,
+  mockEarlyExit,
+  mockLiquidate,
+  mockOrderBook,
+  mockOpenSwap,
   mockPositions,
-  mockTransaction,
+  mockSettlePosition,
+  mockTakeFloatingSide,
+  mockTopUpMargin,
 } from "@/contracts/mock";
-import type { Address, Hash, Market, MtMResult, SwapPosition } from "@/types";
+import type { Address, Hash, Market, MarketStats, MtMResult, SwapPosition } from "@/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
@@ -34,39 +41,41 @@ export async function getPositions(address: Address = ZERO_ADDRESS): Promise<Swa
   return mockPositions(address);
 }
 
+export async function getOrderBook(marketId: string): Promise<SwapPosition[]> {
+  return mockOrderBook(marketId);
+}
+
+export async function getMarketStats(marketId: string): Promise<MarketStats> {
+  return mockMarketStats(marketId);
+}
+
 export async function openSwap(
   marketId: string,
   notional: bigint,
   onBehalfOf: Address,
   mintNFT: boolean,
 ): Promise<Hash> {
-  void marketId;
-  void notional;
-  void onBehalfOf;
-  void mintNFT;
-  return mockTransaction("openSwap");
+  return mockOpenSwap(marketId, notional, onBehalfOf, mintNFT);
 }
 
 export async function takeFloatingSide(positionId: bigint, onBehalfOf: Address): Promise<Hash> {
-  void positionId;
-  void onBehalfOf;
-  return mockTransaction("takeFloatingSide");
+  return mockTakeFloatingSide(positionId, onBehalfOf);
 }
 
 export async function settlePosition(positionId: bigint): Promise<Hash> {
-  void positionId;
-  return mockTransaction("settlePosition");
+  return mockSettlePosition(positionId);
 }
 
 export async function liquidate(positionId: bigint): Promise<Hash> {
-  void positionId;
-  return mockTransaction("liquidate");
+  return mockLiquidate(positionId);
 }
 
 export async function topUpMargin(positionId: bigint, amount: bigint): Promise<Hash> {
-  void positionId;
-  void amount;
-  return mockTransaction("topUpMargin");
+  return mockTopUpMargin(positionId, amount);
+}
+
+export async function earlyExit(positionId: bigint): Promise<Hash> {
+  return mockEarlyExit(positionId);
 }
 
 export async function getMarkToMarket(positionId: bigint): Promise<MtMResult> {

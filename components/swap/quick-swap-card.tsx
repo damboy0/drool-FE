@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowRight, Lock, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useAccount } from "wagmi";
 import { openSwap } from "@/contracts/swap-singleton";
@@ -12,11 +13,19 @@ const USDC = 1_000_000n;
 
 export function QuickSwapCard({ market }: { market: Market }) {
   const { address, isConnected } = useAccount();
+  const queryClient = useQueryClient();
   const [notional, setNotional] = useState("10000");
   const [mintNFT, setMintNFT] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  const termDays = Math.max(1, Math.ceil((market.termEnd * 1000 - Date.now()) / 86_400_000));
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const termDays = Math.max(1, Math.ceil((market.termEnd * 1000 - currentTime) / 86_400_000));
   const notionalUnits = useMemo(() => {
     const parsed = Number(notional);
     return BigInt(Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 1_000_000) : 0);
@@ -43,11 +52,40 @@ export function QuickSwapCard({ market }: { market: Market }) {
     try {
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
       toast.success(`Mock swap submitted: ${hash.slice(0, 10)}...`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["positions"] }),
+        queryClient.invalidateQueries({ queryKey: ["order-book", market.id] }),
+        queryClient.invalidateQueries({ queryKey: ["position-nfts"] }),
+      ]);
+      setStep(1);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Swap submission failed.");
+      const message = error instanceof Error && error.message === "MarketExpired"
+        ? "This market has expired."
+        : error instanceof Error
+          ? error.message
+          : "Swap submission failed.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function nextStep() {
+    if (!isConnected || !address) {
+      toast.error("Connect a wallet to open a swap.");
+      return;
+    }
+
+    if (notionalUnits <= 0n) {
+      toast.error("Enter a valid notional amount.");
+      return;
+    }
+
+    if (step === 2) {
+      toast.success(`Mock ${market.asset} approval confirmed.`);
+    }
+
+    setStep((current) => (current === 1 ? 2 : 3));
   }
 
   return (
@@ -103,13 +141,33 @@ export function QuickSwapCard({ market }: { market: Market }) {
         Mint position NFT
       </label>
 
+      <div className="mt-5 grid grid-cols-3 gap-2 text-xs">
+        {["Configure", "Approve", "Confirm"].map((label, index) => (
+          <div key={label} className={`rounded-md px-2 py-2 text-center ${step === index + 1 ? "bg-sky-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {step === 2 ? (
+        <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
+          Mock allowance check: approve {market.asset} margin before opening the swap.
+        </p>
+      ) : null}
+
+      {step === 3 ? (
+        <p className="mt-4 rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-200">
+          You receive fixed, pay floating, and post {formatUsd(requiredMargin)} margin for this term.
+        </p>
+      ) : null}
+
       <button
         className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         disabled={!isConnected || isSubmitting || notionalUnits < USDC}
-        onClick={handleOpenSwap}
+        onClick={step === 3 ? handleOpenSwap : nextStep}
       >
         {isConnected ? <ArrowRight className="size-4" /> : <Wallet className="size-4" />}
-        {isSubmitting ? "Submitting..." : isConnected ? "Open Swap" : "Connect Wallet"}
+        {isSubmitting ? "Submitting..." : !isConnected ? "Connect Wallet" : step === 1 ? "Continue" : step === 2 ? "Approve USDC" : "Open Swap"}
       </button>
     </section>
   );
