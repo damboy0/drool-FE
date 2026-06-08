@@ -22,9 +22,9 @@ export default function DocsPage() {
     <div className="space-y-6">
       <section className="rounded-lg border border-white/10 bg-slate-900 p-5">
         <p className="text-sm text-slate-400">Documentation</p>
-        <h1 className="mt-1 text-3xl font-semibold text-white">FixedFlow protocol guide</h1>
+        <h1 className="mt-1 text-3xl font-semibold text-white">Drool protocol guide</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-          FixedFlow is a synthetic interest-rate swap marketplace for fixed and floating Aave rate exposure.
+          Drool is a synthetic interest-rate swap marketplace for fixed and floating Aave rate exposure.
           This frontend is wired mock-first so contract addresses, ABIs, oracle reads, NFT calls, and subgraph
           endpoints can replace fixtures through the contract and data abstraction layers.
         </p>

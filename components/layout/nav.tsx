@@ -3,11 +3,12 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, GalleryHorizontal, LayoutDashboard, ShieldAlert, WalletCards } from "lucide-react";
+import { BarChart3, BookOpen, GalleryHorizontal, Home, LayoutDashboard, ShieldAlert, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Home", icon: Home },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/markets", label: "Markets", icon: BarChart3 },
   { href: "/portfolio", label: "Portfolio", icon: WalletCards },
   { href: "/nft-gallery", label: "NFTs", icon: GalleryHorizontal },
@@ -23,9 +24,9 @@ export function Nav() {
       <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-md bg-sky-500 text-sm font-black text-slate-950">
-            FF
+            DR
           </span>
-          <span className="hidden text-base font-semibold text-white sm:block">FixedFlow</span>
+          <span className="hidden text-base font-semibold text-white sm:block">Drool</span>
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">

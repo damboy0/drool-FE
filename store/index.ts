@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Address, SwapPosition } from "@/types";
 
-type FixedFlowStore = {
+type DroolStore = {
   address?: Address;
   chainId?: number;
   positions: SwapPosition[];
@@ -12,10 +12,10 @@ type FixedFlowStore = {
   setPositions: (positions: SwapPosition[]) => void;
   selectPosition: (positionId?: bigint) => void;
   selectMarket: (marketId?: string) => void;
-  setOpenModal: (modal?: FixedFlowStore["openModal"]) => void;
+  setOpenModal: (modal?: DroolStore["openModal"]) => void;
 };
 
-export const useFixedFlowStore = create<FixedFlowStore>((set) => ({
+export const useDroolStore = create<DroolStore>((set) => ({
   positions: [],
   setWallet: (address, chainId) => set({ address, chainId }),
   setPositions: (positions) => set({ positions }),

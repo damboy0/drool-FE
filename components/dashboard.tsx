@@ -46,7 +46,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm text-slate-400">Rate history</p>
               <h1 className="mt-1 text-2xl font-semibold text-white">
-                Floating Aave rate vs. FixedFlow quoted rate
+                Floating Aave rate vs. Drool quoted rate
               </h1>
             </div>
             <Link
@@ -82,7 +82,7 @@ export function Dashboard() {
                 <p className="mt-1 text-2xl font-semibold text-amber-400">{primaryMarket.floatingRate.toFixed(2)}%</p>
               </div>
               <div className="rounded-md bg-slate-950 p-4">
-                <p className="text-xs text-slate-500">FixedFlow fixed</p>
+                <p className="text-xs text-slate-500">Drool fixed</p>
                 <p className="mt-1 text-2xl font-semibold text-emerald-400">
                   {primaryMarket.fixedRateOffered.toFixed(2)}%
                 </p>

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { Footer } from "@/components/layout/footer";
 import { Nav } from "@/components/layout/nav";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FixedFlow Protocol",
+  title: "Drool Protocol",
   description: "Synthetic interest rate swap marketplace on Uniswap v4.",
 };
 
@@ -19,6 +20,7 @@ export default function RootLayout({
         <Providers>
           <Nav />
           <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>
