@@ -1,6 +1,31 @@
 export const aaveLiquidityHookAbi = [
   {
     inputs: [],
+    name: "HookPaused",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidPool",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "address", name: "account", type: "address" }],
+    name: "OwnableUnauthorizedAccount",
+    type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "PoolId", name: "poolId", type: "bytes32" },
+      { indexed: false, internalType: "address", name: "aToken", type: "address" },
+      { indexed: false, internalType: "address", name: "underlying", type: "address" },
+    ],
+    name: "PoolConfigSet",
+    type: "event",
+  },
+  {
+    inputs: [],
     name: "TARGET_IN_POOL_BPS",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
@@ -84,6 +109,13 @@ export const aaveLiquidityHookAbi = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [{ internalType: "bool", name: "_paused", type: "bool" }],
     name: "setPaused",
     outputs: [],
@@ -98,6 +130,13 @@ export const aaveLiquidityHookAbi = [
       { internalType: "bool", name: "isToken0", type: "bool" },
     ],
     name: "setPoolConfig",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+    name: "transferOwnership",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

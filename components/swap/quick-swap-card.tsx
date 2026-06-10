@@ -5,7 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useAccount } from "wagmi";
-import { openSwap } from "@/contracts/swap-singleton";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { approveSwapCollateral, openSwap } from "@/contracts/swap-singleton";
+import { wagmiConfig } from "@/lib/wagmi";
 import { calcRequiredMargin, formatUsd } from "@/lib/math";
 import type { Address, Market } from "@/types";
 
@@ -17,6 +19,7 @@ export function QuickSwapCard({ market }: { market: Market }) {
   const [notional, setNotional] = useState("10000");
   const [mintNFT, setMintNFT] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -51,7 +54,8 @@ export function QuickSwapCard({ market }: { market: Market }) {
     setIsSubmitting(true);
     try {
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
-      toast.success(`Mock swap submitted: ${hash.slice(0, 10)}...`);
+      toast.success(`Swap submitted: ${hash.slice(0, 10)}...`);
+      await waitForTransactionReceipt(wagmiConfig, { hash });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["positions"] }),
         queryClient.invalidateQueries({ queryKey: ["order-book", market.id] }),
@@ -81,11 +85,27 @@ export function QuickSwapCard({ market }: { market: Market }) {
       return;
     }
 
-    if (step === 2) {
-      toast.success(`Mock ${market.asset} approval confirmed.`);
+    setStep((current) => (current === 1 ? 2 : 3));
+  }
+
+  async function handleApprove() {
+    if (!isConnected || !address) {
+      toast.error("Connect a wallet to approve collateral.");
+      return;
     }
 
-    setStep((current) => (current === 1 ? 2 : 3));
+    setIsApproving(true);
+    try {
+      const hash = await approveSwapCollateral();
+      toast.success(`Approval submitted: ${hash.slice(0, 10)}...`);
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      toast.success(`${market.asset} approval confirmed.`);
+      setStep(3);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Approval failed.");
+    } finally {
+      setIsApproving(false);
+    }
   }
 
   return (
@@ -151,7 +171,7 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
       {step === 2 ? (
         <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
-          Mock allowance check: approve {market.asset} margin before opening the swap.
+          Approve {market.asset} collateral for the SwapSingleton before opening the swap.
         </p>
       ) : null}
 
@@ -163,11 +183,11 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
       <button
         className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        disabled={!isConnected || isSubmitting || notionalUnits < USDC}
-        onClick={step === 3 ? handleOpenSwap : nextStep}
+        disabled={!isConnected || isSubmitting || isApproving || notionalUnits < USDC}
+        onClick={step === 3 ? handleOpenSwap : step === 2 ? handleApprove : nextStep}
       >
         {isConnected ? <ArrowRight className="size-4" /> : <Wallet className="size-4" />}
-        {isSubmitting ? "Submitting..." : !isConnected ? "Connect Wallet" : step === 1 ? "Continue" : step === 2 ? "Approve USDC" : "Open Swap"}
+        {isSubmitting ? "Submitting..." : isApproving ? "Approving..." : !isConnected ? "Connect Wallet" : step === 1 ? "Continue" : step === 2 ? "Approve USDC" : "Open Swap"}
       </button>
     </section>
   );

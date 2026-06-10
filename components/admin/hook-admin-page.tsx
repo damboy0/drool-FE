@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, PauseCircle, PlayCircle, Shield, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { isAddress } from "viem";
+import { encodeAbiParameters, isAddress, keccak256 } from "viem";
 import { sepolia } from "wagmi/chains";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
@@ -13,7 +13,7 @@ import {
   setHookPaused,
   setHookPoolConfig,
 } from "@/contracts/aave-liquidity-hook";
-import { addresses } from "@/contracts/addresses";
+import { addresses, sepoliaAaveAssets, sepoliaContracts, sepoliaRehypothecationPoolKey } from "@/contracts/addresses";
 import { useHookStatus } from "@/hooks/use-hook-status";
 import { wagmiConfig } from "@/lib/wagmi";
 import type { Address, PoolId } from "@/types";
@@ -27,6 +27,34 @@ function shorten(value?: string) {
 
 function isPoolId(value: string): value is PoolId {
   return /^0x[a-fA-F0-9]{64}$/.test(value);
+}
+
+function derivePoolId(hook: Address): PoolId {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            { name: "currency0", type: "address" },
+            { name: "currency1", type: "address" },
+            { name: "fee", type: "uint24" },
+            { name: "tickSpacing", type: "int24" },
+            { name: "hooks", type: "address" },
+          ],
+        },
+      ],
+      [
+        {
+          currency0: sepoliaRehypothecationPoolKey.currency0,
+          currency1: sepoliaRehypothecationPoolKey.currency1,
+          fee: sepoliaRehypothecationPoolKey.fee,
+          tickSpacing: sepoliaRehypothecationPoolKey.tickSpacing,
+          hooks: hook,
+        },
+      ],
+    ),
+  ) as PoolId;
 }
 
 function Field({
@@ -57,10 +85,11 @@ export function HookAdminPage() {
   const [pausePending, setPausePending] = useState(false);
   const [poolPending, setPoolPending] = useState(false);
   const [withdrawPending, setWithdrawPending] = useState(false);
-  const [poolId, setPoolId] = useState("");
-  const [withdrawPoolId, setWithdrawPoolId] = useState("");
-  const [aToken, setAToken] = useState("");
-  const [underlying, setUnderlying] = useState("");
+  const defaultPoolId = derivePoolId(addresses.hook ?? sepoliaContracts.hook);
+  const [poolId, setPoolId] = useState<string>(defaultPoolId);
+  const [withdrawPoolId, setWithdrawPoolId] = useState<string>(defaultPoolId);
+  const [aToken, setAToken] = useState<string>(sepoliaAaveAssets[0].aToken);
+  const [underlying, setUnderlying] = useState<string>(sepoliaAaveAssets[0].underlying);
   const [isToken0, setIsToken0] = useState(true);
   const [withdrawConfirmation, setWithdrawConfirmation] = useState("");
 
@@ -75,6 +104,36 @@ export function HookAdminPage() {
     [aToken, poolId, underlying],
   );
   const emergencyWithdrawValid = isPoolId(withdrawPoolId) && withdrawConfirmation === "WITHDRAW";
+  const poolConfigBlockReason = !hookStatus?.configured
+    ? "Set NEXT_PUBLIC_HOOK_ADDRESS and restart the dev server."
+    : !isConnected
+      ? "Connect the owner wallet."
+      : !isOwner
+        ? "Only the hook owner can submit this transaction."
+        : !isSepolia
+          ? "Switch to Sepolia."
+          : !isPoolId(poolId)
+            ? "Enter the PoolId bytes32 for the Uniswap v4 pool."
+            : !isAddress(aToken)
+              ? "Enter a valid Aave aToken address."
+              : !isAddress(underlying)
+                ? "Enter a valid underlying token address."
+                : undefined;
+
+  function applyAssetPreset(symbol: "LINK" | "WETH") {
+    const preset = sepoliaAaveAssets.find((asset) => asset.symbol === symbol);
+    if (!preset) return;
+
+    setAToken(preset.aToken);
+    setUnderlying(preset.underlying);
+    setIsToken0(preset.symbol === "WETH");
+  }
+
+  function applyScriptPoolDefaults() {
+    setPoolId(defaultPoolId);
+    setWithdrawPoolId(defaultPoolId);
+    applyAssetPreset("WETH");
+  }
 
   async function refreshHookStatus() {
     await queryClient.invalidateQueries({ queryKey: ["hook-status"] });
@@ -169,8 +228,8 @@ export function HookAdminPage() {
         <Field label="Status" value={hookStatus?.paused ? "Paused" : "Live"} tone={hookStatus?.paused ? "warning" : "success"} />
         <Field label="Target in pool" value={`${targetPercent.toFixed(0)}%`} />
         <Field label="Network" value={isSepolia ? "Sepolia" : `Wrong network (${chainId})`} tone={isSepolia ? "success" : "warning"} />
-        <Field label="Aave Pool" value={hookStatus?.aavePool ?? ZERO_ADDRESS} />
-        <Field label="PoolManager" value={hookStatus?.poolManager ?? ZERO_ADDRESS} />
+        <Field label="Aave Pool" value={hookStatus?.aavePool ?? sepoliaContracts.aavePool} />
+        <Field label="PoolManager" value={hookStatus?.poolManager ?? sepoliaContracts.poolManager} />
         <Field label="Permissions" value={hookStatus?.permissions ? "Loaded from contract" : "Unavailable"} />
       </section>
 
@@ -239,6 +298,46 @@ export function HookAdminPage() {
             <h2 className="mt-1 text-xl font-semibold text-white">Set Aave deployment mapping</h2>
           </div>
           <div className="mt-5 space-y-3">
+            <div className="rounded-md border border-white/10 bg-slate-950 p-3">
+              <div className="grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
+                <div>
+                  <p>Pool key</p>
+                  <p className="mt-1 font-medium text-white">WETH / LINK · 0.3% · 60</p>
+                </div>
+                <div>
+                  <p>Derived PoolId</p>
+                  <p className="mt-1 break-all font-medium text-white">{defaultPoolId}</p>
+                </div>
+              </div>
+              <button
+                className="mt-3 h-9 rounded-md border border-white/10 px-3 text-sm font-medium text-slate-200 transition hover:border-sky-400 hover:text-white"
+                onClick={applyScriptPoolDefaults}
+                type="button"
+              >
+                Use script defaults
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {sepoliaAaveAssets.map((asset) => {
+                const active = aToken.toLowerCase() === asset.aToken.toLowerCase()
+                  && underlying.toLowerCase() === asset.underlying.toLowerCase();
+
+                return (
+                  <button
+                    key={asset.symbol}
+                    className={`h-10 rounded-md border px-3 text-sm font-medium transition ${
+                      active
+                        ? "border-sky-400 bg-sky-500 text-slate-950"
+                        : "border-white/10 bg-slate-950 text-slate-300 hover:border-sky-400"
+                    }`}
+                    onClick={() => applyAssetPreset(asset.symbol)}
+                    type="button"
+                  >
+                    {asset.symbol}
+                  </button>
+                );
+              })}
+            </div>
             <input
               className="h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-sky-400"
               placeholder="PoolId bytes32"
@@ -266,9 +365,14 @@ export function HookAdminPage() {
               Underlying is token0
             </label>
           </div>
+          {poolConfigBlockReason ? (
+            <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-100">
+              {poolConfigBlockReason}
+            </p>
+          ) : null}
           <button
             className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400"
-            disabled={!canWrite || !poolConfigValid || poolPending}
+            disabled={Boolean(poolConfigBlockReason) || !poolConfigValid || poolPending}
             onClick={submitPoolConfig}
           >
             {poolPending ? "Submitting..." : "Set pool config"}
