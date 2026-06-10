@@ -37,7 +37,7 @@ function getUsdcAddress(): Address {
 }
 
 function parseMarketId(marketId: string): bigint {
-  return BigInt(marketId);
+  return /^\d+$/.test(marketId) ? BigInt(marketId) : BigInt(addresses.marketId);
 }
 
 export async function getMarkets(): Promise<Market[]> {

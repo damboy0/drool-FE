@@ -4,7 +4,8 @@ import { ArrowRight, Lock, Wallet } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { sepolia } from "wagmi/chains";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { approveSwapCollateral, openSwap } from "@/contracts/swap-singleton";
 import { wagmiConfig } from "@/lib/wagmi";
@@ -15,6 +16,8 @@ const USDC = 1_000_000n;
 
 export function QuickSwapCard({ market }: { market: Market }) {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChainAsync, isPending: isSwitchingChain } = useSwitchChain();
   const queryClient = useQueryClient();
   const [notional, setNotional] = useState("10000");
   const [mintNFT, setMintNFT] = useState(true);
@@ -39,6 +42,20 @@ export function QuickSwapCard({ market }: { market: Market }) {
     termDays,
     market.leverageMultiplier,
   );
+  const isSepolia = chainId === sepolia.id;
+
+  async function ensureSepolia() {
+    if (isSepolia) return true;
+
+    try {
+      toast("Switching to Sepolia...");
+      await switchChainAsync({ chainId: sepolia.id });
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Switch to Sepolia failed.");
+      return false;
+    }
+  }
 
   async function handleOpenSwap() {
     if (!isConnected || !address) {
@@ -51,8 +68,11 @@ export function QuickSwapCard({ market }: { market: Market }) {
       return;
     }
 
+    if (!(await ensureSepolia())) return;
+
     setIsSubmitting(true);
     try {
+      toast("Confirm the swap in your wallet.");
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
       toast.success(`Swap submitted: ${hash.slice(0, 10)}...`);
       await waitForTransactionReceipt(wagmiConfig, { hash });
@@ -94,8 +114,11 @@ export function QuickSwapCard({ market }: { market: Market }) {
       return;
     }
 
+    if (!(await ensureSepolia())) return;
+
     setIsApproving(true);
     try {
+      toast("Confirm USDC approval in your wallet.");
       const hash = await approveSwapCollateral();
       toast.success(`Approval submitted: ${hash.slice(0, 10)}...`);
       await waitForTransactionReceipt(wagmiConfig, { hash });
@@ -183,11 +206,11 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
       <button
         className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        disabled={!isConnected || isSubmitting || isApproving || notionalUnits < USDC}
+        disabled={!isConnected || isSubmitting || isApproving || isSwitchingChain || notionalUnits < USDC}
         onClick={step === 3 ? handleOpenSwap : step === 2 ? handleApprove : nextStep}
       >
         {isConnected ? <ArrowRight className="size-4" /> : <Wallet className="size-4" />}
-        {isSubmitting ? "Submitting..." : isApproving ? "Approving..." : !isConnected ? "Connect Wallet" : step === 1 ? "Continue" : step === 2 ? "Approve USDC" : "Open Swap"}
+        {isSwitchingChain ? "Switching..." : isSubmitting ? "Submitting..." : isApproving ? "Approving..." : !isConnected ? "Connect Wallet" : step === 1 ? "Continue" : step === 2 ? "Approve USDC" : "Open Swap"}
       </button>
     </section>
   );
