@@ -3,7 +3,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, GalleryHorizontal, Home, LayoutDashboard, ShieldAlert, WalletCards } from "lucide-react";
+import { BarChart3, GalleryHorizontal, Home, LayoutDashboard, Shield, ShieldAlert, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -13,7 +13,7 @@ const links = [
   { href: "/portfolio", label: "Portfolio", icon: WalletCards },
   { href: "/nft-gallery", label: "NFTs", icon: GalleryHorizontal },
   { href: "/liquidations", label: "Liquidations", icon: ShieldAlert },
-  { href: "/docs", label: "Docs", icon: BookOpen },
+  { href: "/admin/hook", label: "Admin", icon: Shield },
 ];
 
 export function Nav() {

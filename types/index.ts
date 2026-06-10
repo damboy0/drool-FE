@@ -1,5 +1,6 @@
 export type Address = `0x${string}`;
 export type Hash = `0x${string}`;
+export type PoolId = `0x${string}`;
 
 export type AssetSymbol = "USDC" | "DAI" | "WETH";
 
@@ -80,4 +81,39 @@ export type MarketStats = {
   averageFixedRate: number;
   aaveYieldDeployed: bigint;
   liquidationBountyPool: bigint;
+};
+
+export type HookPermissions = {
+  beforeInitialize: boolean;
+  afterInitialize: boolean;
+  beforeAddLiquidity: boolean;
+  afterAddLiquidity: boolean;
+  beforeRemoveLiquidity: boolean;
+  afterRemoveLiquidity: boolean;
+  beforeSwap: boolean;
+  afterSwap: boolean;
+  beforeDonate: boolean;
+  afterDonate: boolean;
+  beforeSwapReturnDelta: boolean;
+  afterSwapReturnDelta: boolean;
+  afterAddLiquidityReturnDelta: boolean;
+  afterRemoveLiquidityReturnDelta: boolean;
+};
+
+export type HookStatus = {
+  configured: boolean;
+  paused: boolean;
+  targetInPoolBps: bigint;
+  aavePool?: Address;
+  poolManager?: Address;
+  owner?: Address;
+  permissions?: HookPermissions;
+};
+
+export type PoolConfig = {
+  aToken: Address;
+  underlying: Address;
+  deployedToAave: bigint;
+  isToken0: boolean;
+  initialized: boolean;
 };

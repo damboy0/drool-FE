@@ -17,5 +17,5 @@ export const addresses: FixedFlowAddresses = {
 };
 
 export function hasLiveContracts() {
-  return Boolean(addresses.singleton && addresses.oracle && addresses.nft);
+  return Boolean(addresses.singleton && addresses.hook && addresses.oracle && addresses.nft);
 }

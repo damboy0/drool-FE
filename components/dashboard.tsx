@@ -7,16 +7,17 @@ import { RateHistoryChart } from "@/components/charts/rate-history-chart";
 import { UtilizationBar } from "@/components/markets/utilization-bar";
 import { QuickSwapCard } from "@/components/swap/quick-swap-card";
 import { MetricCard } from "@/components/ui/metric-card";
+import { useHookStatus } from "@/hooks/use-hook-status";
 import { useMarkets } from "@/hooks/use-market-data";
-import { usePositions } from "@/hooks/use-positions";
 import { formatUsd } from "@/lib/math";
 
 export function Dashboard() {
   const { data: markets = [], isLoading } = useMarkets();
-  const { data: positions = [] } = usePositions();
+  const { data: hookStatus } = useHookStatus();
   const [days, setDays] = useState(90);
   const primaryMarket = markets[0];
   const tvl = markets.reduce((sum, market) => sum + market.totalNotional, 0n);
+  const targetAaveAllocation = hookStatus ? Number(hookStatus.targetInPoolBps) / 100 : 0;
 
   if (isLoading || !primaryMarket) {
     return <div className="rounded-lg border border-white/10 bg-slate-900 p-6 text-slate-300">Loading markets...</div>;
@@ -35,7 +36,15 @@ export function Dashboard() {
         >
           <Percent className="size-5 text-emerald-400" />
         </MetricCard>
-        <MetricCard label="Portfolio positions" value={positions.length.toString()} detail="Wallet-aware mock data">
+        <MetricCard
+          label="Aave hook"
+          value={hookStatus?.configured ? (hookStatus.paused ? "Paused" : "Live") : "Mock"}
+          detail={
+            hookStatus?.configured
+              ? `${targetAaveAllocation.toFixed(0)}% target in pool`
+              : "NEXT_PUBLIC_HOOK_ADDRESS not configured"
+          }
+        >
           <ShieldCheck className="size-5 text-amber-400" />
         </MetricCard>
       </div>

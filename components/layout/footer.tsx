@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { BookOpen, Code2, ShieldCheck } from "lucide-react";
+import { Code2, ShieldCheck } from "lucide-react";
 
 const links = [
   { href: "/markets", label: "Markets" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/nft-gallery", label: "NFTs" },
-  { href: "/docs", label: "Docs" },
 ];
 
 export function Footer() {
@@ -39,10 +38,6 @@ export function Footer() {
         <div>
           <h2 className="text-sm font-semibold text-white">Resources</h2>
           <div className="mt-4 grid gap-3">
-            <Link href="/docs" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white">
-              <BookOpen className="size-4" />
-              Protocol guide
-            </Link>
             <Link
               href="/liquidations"
               className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"
