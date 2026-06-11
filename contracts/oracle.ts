@@ -6,7 +6,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import type { Hash } from "@/types";
 
 function shouldUseMocks() {
-  return typeof window === "undefined" || !process.env.NEXT_PUBLIC_ORACLE_ADDRESS;
+  return typeof window === "undefined" || !addresses.oracle;
 }
 
 export async function getIndex(timestamp: number): Promise<bigint> {

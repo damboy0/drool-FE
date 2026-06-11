@@ -23,7 +23,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 const MAX_UINT256 = (2n ** 256n) - 1n;
 
 function shouldUseMocks() {
-  return typeof window === "undefined" || !process.env.NEXT_PUBLIC_SINGLETON_ADDRESS;
+  return typeof window === "undefined" || !addresses.singleton || !addresses.usdc || !addresses.oracle;
 }
 
 function getSingletonAddress(): Address {
