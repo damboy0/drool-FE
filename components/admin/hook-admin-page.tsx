@@ -14,7 +14,7 @@ import {
   setHookPoolConfig,
 } from "@/contracts/aave-liquidity-hook";
 import { addresses, sepoliaAaveAssets, sepoliaContracts, sepoliaRehypothecationPoolKey } from "@/contracts/addresses";
-import { useHookStatus } from "@/hooks/use-hook-status";
+import { useHookStatus, usePoolConfig } from "@/hooks/use-hook-status";
 import { wagmiConfig } from "@/lib/wagmi";
 import type { Address, PoolId } from "@/types";
 
@@ -92,6 +92,8 @@ export function HookAdminPage() {
   const [underlying, setUnderlying] = useState<string>(sepoliaAaveAssets[0].underlying);
   const [isToken0, setIsToken0] = useState(true);
   const [withdrawConfirmation, setWithdrawConfirmation] = useState("");
+  const selectedPoolId = isPoolId(poolId) ? (poolId as PoolId) : undefined;
+  const { data: poolConfig, isLoading: poolConfigLoading } = usePoolConfig(selectedPoolId);
 
   const owner = hookStatus?.owner;
   const isOwner = Boolean(address && owner && address.toLowerCase() === owner.toLowerCase());
@@ -165,6 +167,7 @@ export function HookAdminPage() {
       toast.success(`Submitted pool config tx: ${hash.slice(0, 10)}...`);
       await waitForTransactionReceipt(wagmiConfig, { hash });
       await queryClient.invalidateQueries({ queryKey: ["hook-pool-config", poolId] });
+      await queryClient.invalidateQueries({ queryKey: ["hook-pool-config", selectedPoolId] });
       toast.success("Pool config updated.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Pool config transaction failed.");
@@ -302,7 +305,7 @@ export function HookAdminPage() {
               <div className="grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
                 <div>
                   <p>Pool key</p>
-                  <p className="mt-1 font-medium text-white">WETH / LINK · 0.3% · 60</p>
+                  <p className="mt-1 font-medium text-white">WETH / LINK - 0.3% - 60</p>
                 </div>
                 <div>
                   <p>Derived PoolId</p>
@@ -364,6 +367,35 @@ export function HookAdminPage() {
               />
               Underlying is token0
             </label>
+            <div className="rounded-md border border-white/10 bg-slate-950 p-3">
+              <p className="text-xs text-slate-500">Current on-chain config</p>
+              {poolConfigLoading ? (
+                <p className="mt-2 text-sm text-slate-400">Loading pool config...</p>
+              ) : poolConfig ? (
+                <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
+                  <div>
+                    <p>aToken</p>
+                    <p className="mt-1 break-all font-medium text-white">{poolConfig.aToken}</p>
+                  </div>
+                  <div>
+                    <p>Underlying</p>
+                    <p className="mt-1 break-all font-medium text-white">{poolConfig.underlying}</p>
+                  </div>
+                  <div>
+                    <p>Deployed to Aave</p>
+                    <p className="mt-1 font-medium text-white">{poolConfig.deployedToAave.toString()}</p>
+                  </div>
+                  <div>
+                    <p>Flags</p>
+                    <p className="mt-1 font-medium text-white">
+                      {poolConfig.initialized ? "Initialized" : "Not initialized"} / {poolConfig.isToken0 ? "token0" : "token1"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">Enter a valid PoolId to read config.</p>
+              )}
+            </div>
           </div>
           {poolConfigBlockReason ? (
             <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-100">

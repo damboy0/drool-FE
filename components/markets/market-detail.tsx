@@ -85,7 +85,7 @@ export function MarketDetail({ marketId }: { marketId: string }) {
               </span>
             </div>
             <p className="mt-3 text-sm text-slate-500">
-              {market.underlyingAsset.slice(0, 8)}...{market.underlyingAsset.slice(-6)} · threshold {market.liquidationThresholdBps / 100}%
+              {market.underlyingAsset.slice(0, 8)}...{market.underlyingAsset.slice(-6)} - threshold {market.liquidationThresholdBps / 100}%
             </p>
           </div>
         </div>

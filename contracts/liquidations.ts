@@ -1,4 +1,4 @@
-import { mockLiquidate, mockLiquidationHistory, mockLiquidations } from "@/contracts/mock";
+import { mockLiquidationHistory, mockLiquidations } from "@/contracts/mock";
 import type { Hash, LiquidationCandidate, LiquidationEvent } from "@/types";
 
 export async function getLiquidations(): Promise<LiquidationCandidate[]> {
@@ -10,5 +10,6 @@ export async function getLiquidationHistory(): Promise<LiquidationEvent[]> {
 }
 
 export async function liquidatePosition(positionId: bigint): Promise<Hash> {
-  return mockLiquidate(positionId);
+  const { liquidate } = await import("@/contracts/swap-singleton");
+  return liquidate(positionId);
 }
