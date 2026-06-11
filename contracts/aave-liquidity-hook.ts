@@ -100,3 +100,12 @@ export async function emergencyWithdrawHookPool(poolId: PoolId): Promise<Hash> {
     args: [poolId],
   });
 }
+
+export async function transferHookOwnership(newOwner: Address): Promise<Hash> {
+  return writeContract(wagmiConfig, {
+    address: getHookAddress(),
+    abi: aaveLiquidityHookAbi,
+    functionName: "transferOwnership",
+    args: [newOwner],
+  });
+}
