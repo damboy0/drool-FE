@@ -1,15 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Banknote, LogOut, Plus } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Banknote } from "lucide-react";
 import { useMemo, useState } from "react";
-import toast from "react-hot-toast";
-import { earlyExit, topUpMargin } from "@/contracts/swap-singleton";
 import { useMarkToMarket, usePositions } from "@/hooks/use-positions";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/lib/math";
-import { StatusPill } from "@/components/common/status-pill";
 import type { SwapPosition } from "@/types";
 
 type Tab = "fixed" | "floating" | "settled";
@@ -23,48 +19,7 @@ function healthColor(percent: number) {
 
 function PositionCard({ position }: { position: SwapPosition }) {
   const { data: mtm } = useMarkToMarket(position.positionId);
-  const queryClient = useQueryClient();
-  const [topUpOpen, setTopUpOpen] = useState(false);
-  const [earlyExitOpen, setEarlyExitOpen] = useState(false);
-  const [amount, setAmount] = useState("500");
-  const [pending, setPending] = useState(false);
   const marginPercent = mtm?.marginPercent ?? 0;
-  const projected = Math.min(100, marginPercent + Number(amount || 0) / 100);
-
-  async function submitTopUp() {
-    setPending(true);
-    try {
-      const units = BigInt(Math.max(0, Math.round(Number(amount) * 1_000_000)));
-      const hash = await topUpMargin(position.positionId, units);
-      toast.success(`Margin top-up submitted: ${hash.slice(0, 10)}...`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["positions"] }),
-        queryClient.invalidateQueries({ queryKey: ["mtm", position.positionId.toString()] }),
-      ]);
-      setTopUpOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Top-up failed.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function submitEarlyExit() {
-    setPending(true);
-    try {
-      const hash = await earlyExit(position.positionId);
-      toast.success(`Early exit submitted: ${hash.slice(0, 10)}...`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["positions"] }),
-        queryClient.invalidateQueries({ queryKey: ["position-nfts"] }),
-      ]);
-      setEarlyExitOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Early exit failed.");
-    } finally {
-      setPending(false);
-    }
-  }
 
   return (
     <article className="rounded-lg border border-white/10 bg-slate-900 p-5">
@@ -72,7 +27,7 @@ function PositionCard({ position }: { position: SwapPosition }) {
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-white">Position #{position.positionId.toString()}</h2>
-            {mtm ? <StatusPill status={mtm.marginHealth} /> : null}
+            {mtm ? <span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs text-slate-300">{mtm.marginHealth}</span> : null}
           </div>
           <p className="mt-1 text-sm text-slate-400">{position.marketId} / {position.matched ? "Matched" : "Open order"}</p>
         </div>
@@ -101,53 +56,9 @@ function PositionCard({ position }: { position: SwapPosition }) {
         <div className="rounded-md bg-slate-950 p-3"><dt className="text-slate-500">Accrued obligation</dt><dd className="mt-1 text-white">{formatUsd((position.fixedMargin + position.floatingMargin) / 3n)}</dd></div>
       </dl>
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <button className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950" onClick={() => setTopUpOpen(true)}>
-          <Plus className="size-4" /> Top up margin
-        </button>
-        <button className="inline-flex items-center gap-2 rounded-md border border-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/10" disabled={pending} onClick={() => setEarlyExitOpen(true)}>
-          <LogOut className="size-4" /> Exit early
-        </button>
-      </div>
-
-      {topUpOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-lg border border-white/10 bg-slate-900 p-5">
-            <h3 className="text-lg font-semibold text-white">Top up margin</h3>
-            <label className="mt-4 block text-sm text-slate-300" htmlFor={`topup-${position.positionId.toString()}`}>Additional margin</label>
-            <input
-              id={`topup-${position.positionId.toString()}`}
-              className="mt-2 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-white"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-            <p className="mt-3 text-sm text-slate-400">Projected health after top-up: <span className="text-white">{projected.toFixed(1)}%</span></p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button className="rounded-md px-4 py-2 text-sm text-slate-300 hover:bg-white/10" onClick={() => setTopUpOpen(false)}>Cancel</button>
-              <button className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:bg-slate-700" disabled={pending} onClick={submitTopUp}>
-                {pending ? "Submitting..." : "Approve and top up"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {earlyExitOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-lg border border-white/10 bg-slate-900 p-5">
-            <h3 className="text-lg font-semibold text-white">Exit position early</h3>
-            <p className="mt-3 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
-              Exiting early forfeits remaining gains to the pool. Estimated penalty: {formatUsd(position.fixedMargin / 5n)}.
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button className="rounded-md px-4 py-2 text-sm text-slate-300 hover:bg-white/10" onClick={() => setEarlyExitOpen(false)}>Cancel</button>
-              <button className="rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700" disabled={pending} onClick={submitEarlyExit}>
-                {pending ? "Submitting..." : "Confirm exit"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <p className="mt-5 rounded-md border border-white/10 bg-slate-950 p-3 text-sm text-slate-400">
+        Margin top-up and early exit are not exposed by the deployed contract ABI, so this view stays read-only.
+      </p>
     </article>
   );
 }
@@ -161,8 +72,8 @@ export function PortfolioPage() {
     return positions
       .filter((position) => {
         if (tab === "settled") return position.settled;
-        if (tab === "floating") return position.matched;
-        return !position.settled;
+        if (tab === "floating") return position.floatingSideTaken;
+        return !position.settled && !position.floatingSideTaken;
       })
       .sort((a, b) => {
         if (sort === "expiry") return a.openTimestamp - b.openTimestamp;

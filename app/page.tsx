@@ -12,9 +12,9 @@ import {
 
 export default function Home() {
   const stats = [
-    { label: "Mock notional routed", value: "$42.8M" },
-    { label: "Active markets", value: "6" },
-    { label: "Position NFTs", value: "124" },
+    { label: "Contract-backed reads", value: "Markets, positions, oracle" },
+    { label: "Live writes", value: "Swap, hook, approval" },
+    { label: "Fallback views", value: "Only where ABI is missing" },
   ];
 
   const workflows = [
@@ -40,10 +40,10 @@ export default function Home() {
     },
   ];
 
-  const markets = [
-    { asset: "ETH", term: "90 days", floating: "4.82%", fixed: "5.16%", liquidity: "$12.4M" },
-    { asset: "USDC", term: "180 days", floating: "5.21%", fixed: "5.48%", liquidity: "$18.7M" },
-    { asset: "WBTC", term: "365 days", floating: "3.76%", fixed: "4.05%", liquidity: "$7.9M" },
+  const surfaces = [
+    { name: "Dashboard", detail: "Entry point for oracle snapshots and swap execution." },
+    { name: "Markets", detail: "On-chain market registry, order book, and market detail." },
+    { name: "Portfolio", detail: "Live positions and mark-to-market from contract state." },
   ];
 
   return (
@@ -56,7 +56,7 @@ export default function Home() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
             Trade synthetic fixed and floating Aave rate exposure, manage margin, and mint position NFTs from a
-            mock-first DeFi workspace.
+            contract-backed DeFi workspace.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -88,42 +88,22 @@ export default function Home() {
           <div className="absolute inset-x-0 top-0 h-1 bg-sky-400" />
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div>
-              <p className="text-sm text-slate-400">Market snapshot</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">ETH 90-day term</h2>
+              <p className="text-sm text-slate-400">Contract surface</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">Live reads and writes</h2>
             </div>
             <BadgeDollarSign className="size-6 text-emerald-300" />
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="rounded-md bg-slate-950 p-4">
-              <p className="text-xs text-slate-500">Floating</p>
-              <p className="mt-2 text-3xl font-semibold text-amber-300">4.82%</p>
-            </div>
-            <div className="rounded-md bg-slate-950 p-4">
-              <p className="text-xs text-slate-500">Fixed offered</p>
-              <p className="mt-2 text-3xl font-semibold text-emerald-300">5.16%</p>
-            </div>
-          </div>
-          <div className="mt-8 h-44">
-            <div className="flex h-full items-end gap-2">
-              {[38, 56, 48, 64, 72, 61, 78, 84, 69, 88, 76, 92].map((height, index) => (
-                <div key={index} className="flex flex-1 items-end rounded-sm bg-slate-950">
-                  <div
-                    className="w-full rounded-sm bg-sky-400"
-                    style={{ height: `${height}%` }}
-                    aria-hidden="true"
-                  />
-                </div>
-              ))}
-            </div>
+          <div className="mt-6 grid gap-3">
+            {surfaces.map((surface) => (
+              <div key={surface.name} className="rounded-md bg-slate-950 p-4">
+                <p className="text-sm font-semibold text-white">{surface.name}</p>
+                <p className="mt-1 text-sm text-slate-400">{surface.detail}</p>
+              </div>
+            ))}
           </div>
           <div className="mt-6 rounded-md bg-slate-950 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Utilization</span>
-              <span className="font-medium text-white">72%</span>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full w-[72%] rounded-full bg-emerald-400" />
-            </div>
+            <p className="text-sm text-slate-400">Current status</p>
+            <p className="mt-2 text-lg font-semibold text-white">Use the dashboard and markets pages for live contract-backed data.</p>
           </div>
         </div>
       </section>
@@ -187,8 +167,8 @@ export default function Home() {
       <section className="py-8">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">Featured markets</p>
-            <h2 className="mt-3 text-3xl font-semibold text-white">Active terms at a glance</h2>
+            <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">App surfaces</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">What is currently live in the UI</h2>
           </div>
           <Link
             href="/markets"
@@ -198,40 +178,12 @@ export default function Home() {
             <ArrowRight className="size-4" />
           </Link>
         </div>
-        <div className="mt-6 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
-          <div className="hidden grid-cols-[1fr_1fr_1fr_1fr_1fr] border-b border-white/10 px-5 py-3 text-xs uppercase tracking-[0.16em] text-slate-500 md:grid">
-            <span>Asset</span>
-            <span>Term</span>
-            <span>Floating</span>
-            <span>Fixed offered</span>
-            <span>Liquidity</span>
-          </div>
-          {markets.map((market) => (
-            <div
-              key={`${market.asset}-${market.term}`}
-              className="grid gap-3 border-b border-white/10 px-5 py-4 last:border-b-0 md:grid-cols-[1fr_1fr_1fr_1fr_1fr]"
-            >
-              <div>
-                <p className="text-xs text-slate-500 md:hidden">Asset</p>
-                <p className="font-semibold text-white">{market.asset}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 md:hidden">Term</p>
-                <p className="text-slate-300">{market.term}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 md:hidden">Floating</p>
-                <p className="text-amber-300">{market.floating}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 md:hidden">Fixed offered</p>
-                <p className="text-emerald-300">{market.fixed}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 md:hidden">Liquidity</p>
-                <p className="text-slate-300">{market.liquidity}</p>
-              </div>
-            </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {surfaces.map((surface) => (
+            <article key={surface.name} className="rounded-lg border border-white/10 bg-slate-900 p-5">
+              <h3 className="text-lg font-semibold text-white">{surface.name}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{surface.detail}</p>
+            </article>
           ))}
         </div>
       </section>

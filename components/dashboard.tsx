@@ -4,19 +4,19 @@ import Link from "next/link";
 import { ArrowUpRight, BadgeDollarSign, Percent, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { RateHistoryChart } from "@/components/charts/rate-history-chart";
-import { UtilizationBar } from "@/components/markets/utilization-bar";
 import { QuickSwapCard } from "@/components/swap/quick-swap-card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { useHookStatus } from "@/hooks/use-hook-status";
-import { useMarkets } from "@/hooks/use-market-data";
+import { useMarketStats, useMarkets } from "@/hooks/use-market-data";
 import { formatUsd } from "@/lib/math";
 
 export function Dashboard() {
   const { data: markets = [], isLoading } = useMarkets();
   const { data: hookStatus } = useHookStatus();
+  const { data: stats } = useMarketStats(markets[0]?.id ?? "");
   const [days, setDays] = useState(90);
   const primaryMarket = markets[0];
-  const tvl = markets.reduce((sum, market) => sum + market.totalNotional, 0n);
+  const tvl = markets.reduce((sum, market) => sum + market.totalCollateral, 0n);
   const targetAaveAllocation = hookStatus ? Number(hookStatus.targetInPoolBps) / 100 : 0;
 
   if (isLoading || !primaryMarket) {
@@ -26,13 +26,13 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Total notional" value={formatUsd(tvl)} detail="Across active mock markets">
+        <MetricCard label="Total collateral" value={formatUsd(tvl)} detail="Summed across on-chain markets">
           <BadgeDollarSign className="size-5 text-sky-400" />
         </MetricCard>
         <MetricCard
-          label="Best fixed rate"
-          value={`${primaryMarket.fixedRateOffered.toFixed(2)}%`}
-          detail={`${primaryMarket.asset} market, ${primaryMarket.openPositions} open positions`}
+          label="Oracle rate"
+          value={`${primaryMarket.oracleRate.toFixed(2)}%`}
+          detail={`Market #${primaryMarket.marketId.toString()}, ${primaryMarket.openPositions} open positions`}
         >
           <Percent className="size-5 text-emerald-400" />
         </MetricCard>
@@ -53,9 +53,9 @@ export function Dashboard() {
         <section className="rounded-lg border border-white/10 bg-slate-900 p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <p className="text-sm text-slate-400">Rate history</p>
+              <p className="text-sm text-slate-400">Oracle snapshots</p>
               <h1 className="mt-1 text-2xl font-semibold text-white">
-                Floating Aave rate vs. Drool quoted rate
+                TWAR and last rate on the deployed oracle
               </h1>
             </div>
             <Link
@@ -87,18 +87,25 @@ export function Dashboard() {
             <p className="text-sm text-slate-400">Current comparison</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="rounded-md bg-slate-950 p-4">
-                <p className="text-xs text-slate-500">Aave floating</p>
-                <p className="mt-1 text-2xl font-semibold text-amber-400">{primaryMarket.floatingRate.toFixed(2)}%</p>
+                <p className="text-xs text-slate-500">Oracle rate</p>
+                <p className="mt-1 text-2xl font-semibold text-amber-400">{primaryMarket.oracleRate.toFixed(2)}%</p>
               </div>
               <div className="rounded-md bg-slate-950 p-4">
-                <p className="text-xs text-slate-500">Drool fixed</p>
+                <p className="text-xs text-slate-500">Average fixed</p>
                 <p className="mt-1 text-2xl font-semibold text-emerald-400">
-                  {primaryMarket.fixedRateOffered.toFixed(2)}%
+                  {Number(stats?.averageFixedRate ?? 0).toFixed(2)}%
                 </p>
               </div>
             </div>
-            <div className="mt-5">
-              <UtilizationBar value={primaryMarket.utilization} />
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-300">
+              <div className="rounded-md bg-slate-950 p-4">
+                <p className="text-xs text-slate-500">Open positions</p>
+                <p className="mt-1 text-lg font-semibold text-white">{stats?.activePositions ?? primaryMarket.openPositions}</p>
+              </div>
+              <div className="rounded-md bg-slate-950 p-4">
+                <p className="text-xs text-slate-500">Threshold</p>
+                <p className="mt-1 text-lg font-semibold text-white">{primaryMarket.liquidationThresholdBps / 100}%</p>
+              </div>
             </div>
           </section>
           <QuickSwapCard market={primaryMarket} />

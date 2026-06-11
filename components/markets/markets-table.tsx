@@ -3,31 +3,30 @@
 import Link from "next/link";
 import { ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
-import { UtilizationBar } from "@/components/markets/utilization-bar";
 import { useMarkets } from "@/hooks/use-market-data";
 import { formatUsd } from "@/lib/math";
 import type { Market } from "@/types";
 
-type SortKey = "asset" | "floatingRate" | "fixedRateOffered" | "totalNotional" | "utilization" | "termEnd" | "openPositions";
+type SortKey = "marketId" | "oracleRate" | "totalCollateral" | "termEnd" | "openPositions" | "status";
 
 function compareMarkets(a: Market, b: Market, key: SortKey) {
-  if (key === "asset") return a.asset.localeCompare(b.asset);
-  if (key === "totalNotional") return Number(b.totalNotional - a.totalNotional);
+  if (key === "marketId") return Number(a.marketId - b.marketId);
+  if (key === "totalCollateral") return Number(b.totalCollateral - a.totalCollateral);
+  if (key === "status") return Number(Number(b.active) - Number(a.active));
   return Number(b[key] - a[key]);
 }
 
 export function MarketsTable() {
   const { data: markets = [], isLoading } = useMarkets();
-  const [sortKey, setSortKey] = useState<SortKey>("totalNotional");
-  const [asset, setAsset] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("totalCollateral");
+  const [status, setStatus] = useState("all");
   const [term, setTerm] = useState("all");
-  const [utilization, setUtilization] = useState("all");
 
   const filtered = useMemo(() => {
     const now = Date.now() / 1000;
 
     return [...markets]
-      .filter((market) => asset === "all" || market.asset === asset)
+      .filter((market) => status === "all" || (status === "active" ? market.active : !market.active))
       .filter((market) => {
         const days = (market.termEnd - now) / 86_400;
         if (term === "short") return days <= 75;
@@ -35,14 +34,8 @@ export function MarketsTable() {
         if (term === "long") return days > 100;
         return true;
       })
-      .filter((market) => {
-        if (utilization === "low") return market.utilization < 60;
-        if (utilization === "balanced") return market.utilization >= 60 && market.utilization < 75;
-        if (utilization === "hot") return market.utilization >= 75;
-        return true;
-      })
       .sort((a, b) => compareMarkets(a, b, sortKey));
-  }, [asset, markets, sortKey, term, utilization]);
+  }, [markets, sortKey, status, term]);
 
   if (isLoading) {
     return <div className="rounded-lg border border-white/10 bg-slate-900 p-6 text-slate-300">Loading markets...</div>;
@@ -53,54 +46,42 @@ export function MarketsTable() {
       <div className="flex flex-col justify-between gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm text-slate-400">Markets</p>
-          <h1 className="mt-1 text-2xl font-semibold text-white">Active fixed-rate swap terms</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-white">On-chain market registry</h1>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           <select
             className="h-10 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white"
-            value={asset}
-            onChange={(event) => setAsset(event.target.value)}
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="all">All assets</option>
-            <option value="USDC">USDC</option>
-            <option value="DAI">DAI</option>
-            <option value="WETH">WETH</option>
+            <option value="all">All markets</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
           <select
             className="h-10 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white"
             value={term}
             onChange={(event) => setTerm(event.target.value)}
-          >
+            >
             <option value="all">All terms</option>
             <option value="short">60d or less</option>
-            <option value="standard">90d terms</option>
+            <option value="standard">75-100d</option>
             <option value="long">100d+</option>
-          </select>
-          <select
-            className="h-10 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white"
-            value={utilization}
-            onChange={(event) => setUtilization(event.target.value)}
-          >
-            <option value="all">All utilization</option>
-            <option value="low">Below 60%</option>
-            <option value="balanced">60-75%</option>
-            <option value="hot">75%+</option>
           </select>
         </div>
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[850px] text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="text-xs uppercase text-slate-500">
             <tr>
               {[
-                ["asset", "Asset"],
-                ["floatingRate", "Floating APY"],
-                ["fixedRateOffered", "Fixed offered"],
-                ["totalNotional", "Total notional"],
-                ["utilization", "Utilization"],
-                ["termEnd", "Term end"],
+                ["marketId", "Market"],
+                ["oracleRate", "Oracle rate"],
+                ["totalCollateral", "Collateral"],
                 ["openPositions", "Open positions"],
+                ["termEnd", "Term end"],
+                ["status", "Status"],
               ].map(([key, label]) => (
                 <th key={key} className="px-5 py-3">
                   <button className="inline-flex items-center gap-2" onClick={() => setSortKey(key as SortKey)}>
@@ -116,15 +97,21 @@ export function MarketsTable() {
               <tr key={market.id} className="text-slate-200 hover:bg-white/[0.03]">
                 <td className="px-5 py-4">
                   <Link href={`/markets/${market.id}`} className="font-semibold text-white hover:text-sky-300">
-                    {market.asset}
+                    Market #{market.marketId.toString()}
                   </Link>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {market.underlyingAsset.slice(0, 8)}...{market.underlyingAsset.slice(-6)}
+                  </p>
                 </td>
-                <td className="px-5 py-4 text-amber-300">{market.floatingRate.toFixed(2)}%</td>
-                <td className="px-5 py-4 text-emerald-300">{market.fixedRateOffered.toFixed(2)}%</td>
-                <td className="px-5 py-4">{formatUsd(market.totalNotional)}</td>
-                <td className="px-5 py-4"><UtilizationBar value={market.utilization} /></td>
-                <td className="px-5 py-4">{new Date(market.termEnd * 1000).toLocaleDateString()}</td>
+                <td className="px-5 py-4 text-amber-300">{market.oracleRate.toFixed(2)}%</td>
+                <td className="px-5 py-4">{formatUsd(market.totalCollateral)}</td>
                 <td className="px-5 py-4">{market.openPositions}</td>
+                <td className="px-5 py-4">{new Date(market.termEnd * 1000).toLocaleDateString()}</td>
+                <td className="px-5 py-4">
+                  <span className={`rounded-full px-2.5 py-1 text-xs ${market.active ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-800 text-slate-300"}`}>
+                    {market.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -135,13 +122,11 @@ export function MarketsTable() {
         {filtered.map((market) => (
           <Link key={market.id} href={`/markets/${market.id}`} className="rounded-lg border border-white/10 bg-slate-950 p-4">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-white">{market.asset}</p>
-              <p className="text-sm text-emerald-300">{market.fixedRateOffered.toFixed(2)}%</p>
+              <p className="font-semibold text-white">Market #{market.marketId.toString()}</p>
+              <p className="text-sm text-emerald-300">{market.oracleRate.toFixed(2)}%</p>
             </div>
-            <p className="mt-2 text-sm text-slate-400">{formatUsd(market.totalNotional)} total notional</p>
-            <div className="mt-4">
-              <UtilizationBar value={market.utilization} />
-            </div>
+            <p className="mt-2 text-sm text-slate-400">{formatUsd(market.totalCollateral)} collateral</p>
+            <p className="mt-1 text-xs text-slate-500">{market.underlyingAsset.slice(0, 8)}...{market.underlyingAsset.slice(-6)}</p>
           </Link>
         ))}
       </div>

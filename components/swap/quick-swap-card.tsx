@@ -8,9 +8,8 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { approveSwapCollateral, openSwap } from "@/contracts/swap-singleton";
-import { advanceIndex } from "@/contracts/oracle";
 import { wagmiConfig } from "@/lib/wagmi";
-import { calcRequiredMargin, formatUsd } from "@/lib/math";
+import { formatUsd } from "@/lib/math";
 import type { Address, Market } from "@/types";
 
 const USDC = 1_000_000n;
@@ -37,12 +36,6 @@ export function QuickSwapCard({ market }: { market: Market }) {
     const parsed = Number(notional);
     return BigInt(Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 1_000_000) : 0);
   }, [notional]);
-  const requiredMargin = calcRequiredMargin(
-    notionalUnits,
-    market.fixedRateOffered,
-    termDays,
-    market.leverageMultiplier,
-  );
   const isSepolia = chainId === sepolia.id;
 
   async function ensureSepolia() {
@@ -73,12 +66,6 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
     setIsSubmitting(true);
     try {
-      const oracleResult = await advanceIndex();
-      if (typeof oracleResult === "string") {
-        toast("Confirm the oracle update in your wallet.");
-        await waitForTransactionReceipt(wagmiConfig, { hash: oracleResult });
-        toast.success("Oracle updated.");
-      }
       toast("Confirm the swap in your wallet.");
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
       toast.success(`Swap submitted: ${hash.slice(0, 10)}...`);
@@ -129,7 +116,7 @@ export function QuickSwapCard({ market }: { market: Market }) {
       const hash = await approveSwapCollateral();
       toast.success(`Approval submitted: ${hash.slice(0, 10)}...`);
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      toast.success(`${market.asset} approval confirmed.`);
+      toast.success("USDC approval confirmed.");
       setStep(3);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Approval failed.");
@@ -143,7 +130,7 @@ export function QuickSwapCard({ market }: { market: Market }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-400">Quick Swap</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">{market.asset} fixed-rate receiver</h2>
+          <h2 className="mt-1 text-xl font-semibold text-white">Open swap on market #{market.marketId.toString()}</h2>
         </div>
         <Lock className="size-5 text-emerald-400" />
       </div>
@@ -159,17 +146,17 @@ export function QuickSwapCard({ market }: { market: Market }) {
           value={notional}
           onChange={(event) => setNotional(event.target.value)}
         />
-        <span className="text-sm text-slate-400">{market.asset}</span>
+        <span className="text-sm text-slate-400">{market.underlyingAsset.slice(0, 8)}...{market.underlyingAsset.slice(-6)}</span>
       </div>
 
       <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-md bg-slate-950 p-3">
-          <dt className="text-slate-500">Fixed rate</dt>
-          <dd className="mt-1 text-lg font-semibold text-emerald-400">{market.fixedRateOffered.toFixed(2)}%</dd>
+          <dt className="text-slate-500">Oracle rate</dt>
+          <dd className="mt-1 text-lg font-semibold text-emerald-400">{market.oracleRate.toFixed(2)}%</dd>
         </div>
         <div className="rounded-md bg-slate-950 p-3">
-          <dt className="text-slate-500">Required margin</dt>
-          <dd className="mt-1 text-lg font-semibold text-white">{formatUsd(requiredMargin)}</dd>
+          <dt className="text-slate-500">Total collateral</dt>
+          <dd className="mt-1 text-lg font-semibold text-white">{formatUsd(market.totalCollateral)}</dd>
         </div>
         <div className="rounded-md bg-slate-950 p-3">
           <dt className="text-slate-500">Term</dt>
@@ -178,6 +165,14 @@ export function QuickSwapCard({ market }: { market: Market }) {
         <div className="rounded-md bg-slate-950 p-3">
           <dt className="text-slate-500">Leverage</dt>
           <dd className="mt-1 text-lg font-semibold text-white">{market.leverageMultiplier}x</dd>
+        </div>
+        <div className="rounded-md bg-slate-950 p-3">
+          <dt className="text-slate-500">Liquidation threshold</dt>
+          <dd className="mt-1 text-lg font-semibold text-white">{market.liquidationThresholdBps / 100}%</dd>
+        </div>
+        <div className="rounded-md bg-slate-950 p-3">
+          <dt className="text-slate-500">Active positions</dt>
+          <dd className="mt-1 text-lg font-semibold text-white">{market.openPositions}</dd>
         </div>
       </dl>
 
@@ -192,7 +187,7 @@ export function QuickSwapCard({ market }: { market: Market }) {
       </label>
 
       <div className="mt-5 grid grid-cols-3 gap-2 text-xs">
-        {["Configure", "Approve", "Confirm"].map((label, index) => (
+        {["Review", "Approve", "Confirm"].map((label, index) => (
           <div key={label} className={`rounded-md px-2 py-2 text-center ${step === index + 1 ? "bg-sky-500 text-slate-950" : "bg-slate-950 text-slate-400"}`}>
             {label}
           </div>
@@ -201,13 +196,13 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
       {step === 2 ? (
         <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
-          Approve {market.asset} collateral for the SwapSingleton before opening the swap.
+          Approve USDC collateral for the SwapSingleton before opening the swap.
         </p>
       ) : null}
 
       {step === 3 ? (
         <p className="mt-4 rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-200">
-          You receive fixed, pay floating, and post {formatUsd(requiredMargin)} margin for this term.
+          The contract will validate the position and store the on-chain swap state once you confirm.
         </p>
       ) : null}
 

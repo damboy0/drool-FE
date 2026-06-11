@@ -6,14 +6,22 @@ export type AssetSymbol = "USDC" | "DAI" | "WETH";
 
 export type Market = {
   id: string;
-  asset: AssetSymbol;
+  marketId: bigint;
+  underlyingAsset: Address;
   termEnd: number;
-  totalNotional: bigint;
-  utilization: number;
-  fixedRateOffered: number;
-  floatingRate: number;
-  openPositions: number;
   leverageMultiplier: number;
+  liquidationThresholdBps: number;
+  oracle: Address;
+  active: boolean;
+  totalCollateral: bigint;
+  openPositions: number;
+  oracleRate: number;
+  asset?: AssetSymbol;
+  label?: string;
+  totalNotional?: bigint;
+  utilization?: number;
+  fixedRateOffered?: number;
+  floatingRate?: number;
 };
 
 export type SwapPosition = {
@@ -31,6 +39,7 @@ export type SwapPosition = {
   settled: boolean;
   nftMinted: boolean;
   matched: boolean;
+  floatingSideTaken?: boolean;
 };
 
 export type MarginHealth = "healthy" | "warning" | "at-risk" | "danger";
@@ -43,9 +52,11 @@ export type MtMResult = {
 
 export type RatePoint = {
   timestamp: number;
-  blockNumber: number;
-  floatingRate: number;
-  fixedRate: number;
+  lookbackDays: number;
+  twarRate: number;
+  lastRate: number;
+  floatingRate?: number;
+  fixedRate?: number;
 };
 
 export type LiquidationCandidate = {
@@ -79,8 +90,11 @@ export type MarketStats = {
   totalOpenNotional: bigint;
   activePositions: number;
   averageFixedRate: number;
-  aaveYieldDeployed: bigint;
-  liquidationBountyPool: bigint;
+  totalCollateral: bigint;
+  liquidationThresholdBps: number;
+  oracleRate: number;
+  aaveYieldDeployed?: bigint;
+  liquidationBountyPool?: bigint;
 };
 
 export type HookPermissions = {
