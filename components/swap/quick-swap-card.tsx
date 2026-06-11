@@ -8,6 +8,7 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { approveSwapCollateral, openSwap } from "@/contracts/swap-singleton";
+import { advanceIndex } from "@/contracts/oracle";
 import { wagmiConfig } from "@/lib/wagmi";
 import { calcRequiredMargin, formatUsd } from "@/lib/math";
 import type { Address, Market } from "@/types";
@@ -72,6 +73,13 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
     setIsSubmitting(true);
     try {
+      toast("Confirm the oracle update in your wallet.");
+      const oracleHash = await advanceIndex();
+      if (typeof oracleHash === "bigint") {
+        throw new Error("Oracle update did not produce a transaction hash.");
+      }
+      await waitForTransactionReceipt(wagmiConfig, { hash: oracleHash });
+      toast.success("Oracle updated.");
       toast("Confirm the swap in your wallet.");
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
       toast.success(`Swap submitted: ${hash.slice(0, 10)}...`);
