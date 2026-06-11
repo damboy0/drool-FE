@@ -73,13 +73,12 @@ export function QuickSwapCard({ market }: { market: Market }) {
 
     setIsSubmitting(true);
     try {
-      toast("Confirm the oracle update in your wallet.");
-      const oracleHash = await advanceIndex();
-      if (typeof oracleHash === "bigint") {
-        throw new Error("Oracle update did not produce a transaction hash.");
+      const oracleResult = await advanceIndex();
+      if (typeof oracleResult === "string") {
+        toast("Confirm the oracle update in your wallet.");
+        await waitForTransactionReceipt(wagmiConfig, { hash: oracleResult });
+        toast.success("Oracle updated.");
       }
-      await waitForTransactionReceipt(wagmiConfig, { hash: oracleHash });
-      toast.success("Oracle updated.");
       toast("Confirm the swap in your wallet.");
       const hash = await openSwap(market.id, notionalUnits, address as Address, mintNFT);
       toast.success(`Swap submitted: ${hash.slice(0, 10)}...`);
