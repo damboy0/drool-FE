@@ -15,20 +15,11 @@ import {
   transferHookOwnership,
 } from "@/contracts/aave-liquidity-hook";
 import { addresses, sepoliaAaveAssets, sepoliaContracts, sepoliaRehypothecationPoolKey } from "@/contracts/addresses";
-import {
-  approvePoolRouterToken,
-  initializeHookPool,
-  modifyHookPoolLiquidity,
-  swapHookPool,
-} from "@/contracts/pool-router";
 import { useHookStatus, usePoolConfig } from "@/hooks/use-hook-status";
 import { wagmiConfig } from "@/lib/wagmi";
 import type { Address, PoolId } from "@/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const ZERO_BYTES32 = `0x${"0".repeat(64)}` as const;
-const MIN_SQRT_PRICE_PLUS_ONE = 4_295_128_740n;
-const MAX_SQRT_PRICE_MINUS_ONE = 1_461_446_703_485_210_103_287_273_052_203_988_822_378_723_970_341n;
 
 function shorten(value?: string) {
   if (!value) return "Not configured";
@@ -37,20 +28,6 @@ function shorten(value?: string) {
 
 function isPoolId(value: string): value is PoolId {
   return /^0x[a-fA-F0-9]{64}$/.test(value);
-}
-
-function isBytes32(value: string): value is `0x${string}` {
-  return /^0x[a-fA-F0-9]{64}$/.test(value);
-}
-
-function parseSignedBigInt(value: string) {
-  if (!/^-?\d+$/.test(value.trim())) return undefined;
-  return BigInt(value.trim());
-}
-
-function parseUnsignedBigInt(value: string) {
-  if (!/^\d+$/.test(value.trim())) return undefined;
-  return BigInt(value.trim());
 }
 
 function derivePoolId(hook: Address): PoolId {
@@ -119,13 +96,6 @@ export function HookAdminPage() {
   const [withdrawConfirmation, setWithdrawConfirmation] = useState("");
   const [newOwner, setNewOwner] = useState("");
   const [transferConfirmation, setTransferConfirmation] = useState("");
-  const [poolActionPending, setPoolActionPending] = useState(false);
-  const [liquidityDelta, setLiquidityDelta] = useState("1000000000000000000");
-  const [tickLower, setTickLower] = useState("-600");
-  const [tickUpper, setTickUpper] = useState("600");
-  const [liquiditySalt, setLiquiditySalt] = useState<string>(ZERO_BYTES32);
-  const [swapAmount, setSwapAmount] = useState("1000");
-  const [swapZeroForOne, setSwapZeroForOne] = useState(true);
   const selectedPoolId = isPoolId(poolId) ? (poolId as PoolId) : undefined;
   const { data: poolConfig, isLoading: poolConfigLoading } = usePoolConfig(selectedPoolId);
 
@@ -133,18 +103,7 @@ export function HookAdminPage() {
   const isOwner = Boolean(address && owner && address.toLowerCase() === owner.toLowerCase());
   const isSepolia = chainId === sepolia.id;
   const canWrite = Boolean(hookStatus?.configured && isConnected && isOwner && isSepolia);
-  const canUsePoolRouter = Boolean(canWrite && addresses.poolRouter);
   const targetPercent = hookStatus ? Number(hookStatus.targetInPoolBps) / 100 : 0;
-  const parsedLiquidityDelta = parseSignedBigInt(liquidityDelta);
-  const parsedTickLower = Number(tickLower);
-  const parsedTickUpper = Number(tickUpper);
-  const parsedSwapAmount = parseUnsignedBigInt(swapAmount);
-  const liquidityValid = parsedLiquidityDelta !== undefined
-    && Number.isInteger(parsedTickLower)
-    && Number.isInteger(parsedTickUpper)
-    && parsedTickLower < parsedTickUpper
-    && isBytes32(liquiditySalt);
-  const swapValid = parsedSwapAmount !== undefined && parsedSwapAmount > 0n;
 
   const poolConfigValid = useMemo(
     () => isPoolId(poolId) && isAddress(aToken) && isAddress(underlying),
@@ -259,69 +218,6 @@ export function HookAdminPage() {
     } finally {
       setTransferPending(false);
     }
-  }
-
-  async function runPoolAction(action: () => Promise<`0x${string}`>, success: string) {
-    if (!canUsePoolRouter) return;
-
-    setPoolActionPending(true);
-    try {
-      const hash = await action();
-      toast.success(`Submitted pool tx: ${hash.slice(0, 10)}...`);
-      await waitForTransactionReceipt(wagmiConfig, { hash });
-      await Promise.all([
-        refreshHookStatus(),
-        queryClient.invalidateQueries({ queryKey: ["hook-pool-config", selectedPoolId] }),
-        queryClient.invalidateQueries({ queryKey: ["hook-pool-config", poolId] }),
-      ]);
-      toast.success(success);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Pool transaction failed.");
-    } finally {
-      setPoolActionPending(false);
-    }
-  }
-
-  async function approveRouterToken(token: Address) {
-    await runPoolAction(() => approvePoolRouterToken(token), "Router approval confirmed.");
-  }
-
-  async function submitInitializePool() {
-    await runPoolAction(() => initializeHookPool(), "Hook pool initialized.");
-  }
-
-  async function submitModifyLiquidity(multiplier: 1n | -1n) {
-    if (!address || !liquidityValid || parsedLiquidityDelta === undefined) return;
-
-    const absoluteDelta = parsedLiquidityDelta < 0n ? -parsedLiquidityDelta : parsedLiquidityDelta;
-    await runPoolAction(
-      () => modifyHookPoolLiquidity(
-        {
-          tickLower: parsedTickLower,
-          tickUpper: parsedTickUpper,
-          liquidityDelta: absoluteDelta * multiplier,
-          salt: liquiditySalt as `0x${string}`,
-        },
-        address as Address,
-      ),
-      multiplier > 0n ? "Liquidity added." : "Liquidity removed.",
-    );
-  }
-
-  async function submitPoolSwap() {
-    if (!address || !swapValid || parsedSwapAmount === undefined) return;
-
-    await runPoolAction(
-      () => swapHookPool(
-        {
-          zeroForOne: swapZeroForOne,
-          amountSpecified: -parsedSwapAmount,
-          sqrtPriceLimitX96: swapZeroForOne ? MIN_SQRT_PRICE_PLUS_ONE : MAX_SQRT_PRICE_MINUS_ONE,
-        },
-        address as Address,
-      ),
-      "Pool swap submitted.",
-    );
   }
 
   if (isLoading) {
@@ -542,130 +438,6 @@ export function HookAdminPage() {
           </button>
         </section>
       </div>
-
-      <section className="rounded-lg border border-white/10 bg-slate-900 p-5">
-        <div>
-          <p className="text-sm text-slate-400">PoolManager route</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Trigger hook callbacks through router</h2>
-        </div>
-        <div className="mt-5 rounded-md border border-white/10 bg-slate-950 p-3">
-          <div className="grid gap-3 text-xs text-slate-400 md:grid-cols-3">
-            <div>
-              <p>Router</p>
-              <p className="mt-1 break-all font-medium text-white">{addresses.poolRouter ?? "Not configured"}</p>
-            </div>
-            <div>
-              <p>Token0</p>
-              <p className="mt-1 break-all font-medium text-white">{sepoliaRehypothecationPoolKey.currency0}</p>
-            </div>
-            <div>
-              <p>Token1</p>
-              <p className="mt-1 break-all font-medium text-white">{sepoliaRehypothecationPoolKey.currency1}</p>
-            </div>
-          </div>
-        </div>
-        {!addresses.poolRouter ? (
-          <p className="mt-4 rounded-md border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-100">
-            Set NEXT_PUBLIC_POOL_ROUTER_ADDRESS to enable PoolManager operations.
-          </p>
-        ) : null}
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            className="inline-flex h-10 items-center justify-center rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400"
-            disabled={!canUsePoolRouter || poolActionPending}
-            onClick={submitInitializePool}
-          >
-            {poolActionPending ? "Submitting..." : "Initialize pool"}
-          </button>
-          <button
-            className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:border-slate-800 disabled:text-slate-600"
-            disabled={!canUsePoolRouter || poolActionPending}
-            onClick={() => approveRouterToken(sepoliaRehypothecationPoolKey.currency0)}
-          >
-            Approve token0
-          </button>
-          <button
-            className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:border-slate-800 disabled:text-slate-600"
-            disabled={!canUsePoolRouter || poolActionPending}
-            onClick={() => approveRouterToken(sepoliaRehypothecationPoolKey.currency1)}
-          >
-            Approve token1
-          </button>
-        </div>
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <div className="rounded-md border border-white/10 bg-slate-950 p-4">
-            <p className="text-sm font-medium text-white">Liquidity</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <input
-                className="h-10 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none focus:border-sky-400"
-                placeholder="Tick lower"
-                value={tickLower}
-                onChange={(event) => setTickLower(event.target.value)}
-              />
-              <input
-                className="h-10 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none focus:border-sky-400"
-                placeholder="Tick upper"
-                value={tickUpper}
-                onChange={(event) => setTickUpper(event.target.value)}
-              />
-              <input
-                className="h-10 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none focus:border-sky-400 sm:col-span-2"
-                placeholder="Liquidity delta"
-                value={liquidityDelta}
-                onChange={(event) => setLiquidityDelta(event.target.value)}
-              />
-              <input
-                className="h-10 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none focus:border-sky-400 sm:col-span-2"
-                placeholder="Salt bytes32"
-                value={liquiditySalt}
-                onChange={(event) => setLiquiditySalt(event.target.value)}
-              />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                className="inline-flex h-10 items-center justify-center rounded-md bg-emerald-400 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400"
-                disabled={!canUsePoolRouter || !liquidityValid || poolActionPending}
-                onClick={() => submitModifyLiquidity(1n)}
-              >
-                Add liquidity
-              </button>
-              <button
-                className="inline-flex h-10 items-center justify-center rounded-md bg-amber-400 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400"
-                disabled={!canUsePoolRouter || !liquidityValid || poolActionPending}
-                onClick={() => submitModifyLiquidity(-1n)}
-              >
-                Remove liquidity
-              </button>
-            </div>
-          </div>
-          <div className="rounded-md border border-white/10 bg-slate-950 p-4">
-            <p className="text-sm font-medium text-white">Pool swap</p>
-            <div className="mt-4 grid gap-3">
-              <input
-                className="h-10 rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-white outline-none focus:border-sky-400"
-                placeholder="Exact input amount"
-                value={swapAmount}
-                onChange={(event) => setSwapAmount(event.target.value)}
-              />
-              <label className="flex items-center gap-3 rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={swapZeroForOne}
-                  onChange={(event) => setSwapZeroForOne(event.target.checked)}
-                />
-                Swap token0 to token1
-              </label>
-            </div>
-            <button
-              className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400"
-              disabled={!canUsePoolRouter || !swapValid || poolActionPending}
-              onClick={submitPoolSwap}
-            >
-              Submit pool swap
-            </button>
-          </div>
-        </div>
-      </section>
 
       <section className="rounded-lg border border-red-400/20 bg-red-400/10 p-5">
         <div className="flex items-start gap-3">

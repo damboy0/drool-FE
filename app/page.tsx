@@ -4,7 +4,7 @@ import {
   BadgeDollarSign,
   BarChart3,
   Clock,
-  GalleryHorizontal,
+  Droplets,
   Layers3,
   ShieldCheck,
   WalletCards,
@@ -34,15 +34,16 @@ export default function Home() {
       icon: ShieldCheck,
     },
     {
-      title: "Mint position ownership",
-      body: "Use NFTs to represent beneficial ownership of swap economics and margin.",
-      icon: GalleryHorizontal,
+      title: "Operate the hook pool",
+      body: "Initialize the v4 pool, adjust liquidity, and submit pool swaps through the router.",
+      icon: Droplets,
     },
   ];
 
   const surfaces = [
     { name: "Dashboard", detail: "Entry point for oracle snapshots and swap execution." },
     { name: "Markets", detail: "On-chain market registry, order book, and market detail." },
+    { name: "Pool", detail: "PoolManager actions routed through the deployed hook router." },
     { name: "Portfolio", detail: "Live positions and mark-to-market from contract state." },
   ];
 
@@ -55,7 +56,7 @@ export default function Home() {
             Drool
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-            Trade synthetic fixed and floating Aave rate exposure, manage margin, and mint position NFTs from a
+            Trade synthetic fixed and floating Aave rate exposure, manage margin, and operate the hook pool from a
             contract-backed DeFi workspace.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -129,7 +130,7 @@ export default function Home() {
             Built around the full lifecycle of a rate position.
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
-            The app separates market discovery, swap execution, collateral management, NFT ownership, and liquidation
+            The app separates market discovery, swap execution, hook pool operations, collateral management, and liquidation
             monitoring so each workflow stays focused.
           </p>
         </div>
@@ -178,7 +179,7 @@ export default function Home() {
             <ArrowRight className="size-4" />
           </Link>
         </div>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
           {surfaces.map((surface) => (
             <article key={surface.name} className="rounded-lg border border-white/10 bg-slate-900 p-5">
               <h3 className="text-lg font-semibold text-white">{surface.name}</h3>
@@ -198,11 +199,11 @@ export default function Home() {
           </p>
         </div>
         <div className="rounded-lg border border-white/10 bg-slate-900 p-6">
-          <GalleryHorizontal className="size-6 text-emerald-300" />
-          <h2 className="mt-5 text-2xl font-semibold text-white">Position NFTs stay first-class</h2>
+          <Droplets className="size-6 text-emerald-300" />
+          <h2 className="mt-5 text-2xl font-semibold text-white">Hook pool actions are available to users</h2>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            Minted swaps can be browsed in the NFT gallery, inspected for economics, and treated as ownership records
-            for the position lifecycle.
+            The Pool page exposes initialization, liquidity, approvals, and pool swaps through the deployed router
+            without requiring access to the owner admin console.
           </p>
         </div>
       </section>

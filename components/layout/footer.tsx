@@ -3,8 +3,8 @@ import { Code2, ShieldCheck } from "lucide-react";
 
 const links = [
   { href: "/markets", label: "Markets" },
+  { href: "/pool", label: "Pool" },
   { href: "/portfolio", label: "Portfolio" },
-  { href: "/nft-gallery", label: "NFTs" },
 ];
 
 export function Footer() {
@@ -19,8 +19,8 @@ export function Footer() {
             <span className="text-base font-semibold text-white">Drool</span>
           </Link>
           <p className="mt-4 max-w-md text-sm leading-6 text-slate-400">
-            Synthetic fixed and floating interest-rate exposure, position NFTs, portfolio monitoring, and liquidation
-            workflows in one DeFi workspace.
+            Synthetic fixed and floating interest-rate exposure, hook pool operations, portfolio monitoring, and
+            liquidation workflows in one DeFi workspace.
           </p>
         </div>
 
