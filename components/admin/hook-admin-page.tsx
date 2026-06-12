@@ -2,7 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, PauseCircle, PlayCircle, Shield, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { encodeAbiParameters, isAddress, keccak256 } from "viem";
 import { sepolia } from "wagmi/chains";
@@ -20,11 +21,6 @@ import { wagmiConfig } from "@/lib/wagmi";
 import type { Address, PoolId } from "@/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-
-function shorten(value?: string) {
-  if (!value) return "Not configured";
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
 
 function isPoolId(value: string): value is PoolId {
   return /^0x[a-fA-F0-9]{64}$/.test(value);
@@ -80,6 +76,7 @@ function Field({
 export function HookAdminPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const router = useRouter();
   const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
   const queryClient = useQueryClient();
   const { data: hookStatus, isLoading, error } = useHookStatus();
@@ -101,6 +98,7 @@ export function HookAdminPage() {
 
   const owner = hookStatus?.owner;
   const isOwner = Boolean(address && owner && address.toLowerCase() === owner.toLowerCase());
+  const isAccessDenied = Boolean(hookStatus?.configured && isConnected && owner && !isOwner);
   const isSepolia = chainId === sepolia.id;
   const canWrite = Boolean(hookStatus?.configured && isConnected && isOwner && isSepolia);
   const targetPercent = hookStatus ? Number(hookStatus.targetInPoolBps) / 100 : 0;
@@ -220,8 +218,30 @@ export function HookAdminPage() {
     }
   }
 
+  useEffect(() => {
+    if (isAccessDenied) {
+      router.replace("/");
+    }
+  }, [isAccessDenied, router]);
+
   if (isLoading) {
     return <div className="rounded-lg border border-white/10 bg-slate-900 p-6 text-slate-300">Loading hook admin...</div>;
+  }
+
+  if (isAccessDenied) {
+    return null;
+  }
+
+  if (hookStatus?.configured && !isConnected) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-slate-900 p-6">
+        <p className="text-sm text-slate-400">Owner console</p>
+        <h1 className="mt-1 text-3xl font-semibold text-white">Aave hook admin</h1>
+        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300">
+          Connect the owner wallet to access this page.
+        </p>
+      </section>
+    );
   }
 
   return (
@@ -239,7 +259,7 @@ export function HookAdminPage() {
             </span>
             <span className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">
               <Wallet className="size-4 text-amber-300" />
-              {isOwner ? "Owner connected" : "Read only"}
+              {isOwner ? "Owner connected" : "Owner required"}
             </span>
           </div>
         </div>
@@ -266,14 +286,6 @@ export function HookAdminPage() {
       {!hookStatus?.configured ? (
         <section className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-5 text-sm text-amber-100">
           Set `NEXT_PUBLIC_HOOK_ADDRESS` and restart the dev server before using admin actions.
-        </section>
-      ) : !isConnected ? (
-        <section className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-5 text-sm text-amber-100">
-          Connect the owner wallet to enable admin actions.
-        </section>
-      ) : !isOwner ? (
-        <section className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-5 text-sm text-amber-100">
-          Connected wallet `{shorten(address)}` does not match owner `{shorten(owner)}`. Admin actions are disabled.
         </section>
       ) : !isSepolia ? (
         <section className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-5">

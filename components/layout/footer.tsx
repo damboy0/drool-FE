@@ -60,7 +60,12 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>(c) 2026 Drool. Mock-first protocol interface.</p>
-          <p>Built for synthetic interest-rate swap workflows.</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p>Built for synthetic interest-rate swap workflows.</p>
+            <Link href="/admin/hook" className="text-slate-600 transition hover:text-slate-400">
+              Admin
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
