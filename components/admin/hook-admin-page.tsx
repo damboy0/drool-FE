@@ -392,7 +392,7 @@ export function HookAdminPage() {
                 checked={isToken0}
                 onChange={(event) => setIsToken0(event.target.checked)}
               />
-              Underlying is token0
+              Underlying is WETH
             </label>
             <div className="rounded-md border border-white/10 bg-slate-950 p-3">
               <p className="text-xs text-slate-500">Current on-chain config</p>
@@ -415,7 +415,7 @@ export function HookAdminPage() {
                   <div>
                     <p>Flags</p>
                     <p className="mt-1 font-medium text-white">
-                      {poolConfig.initialized ? "Initialized" : "Not initialized"} / {poolConfig.isToken0 ? "token0" : "token1"}
+                      {poolConfig.initialized ? "Initialized" : "Not initialized"} / {poolConfig.isToken0 ? "WETH" : "LINK"}
                     </p>
                   </div>
                 </div>

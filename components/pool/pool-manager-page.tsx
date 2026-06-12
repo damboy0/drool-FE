@@ -159,11 +159,11 @@ export function PoolManagerPage() {
           <p className="mt-2 break-all text-sm font-medium text-white">{addresses.poolRouter ?? "Not configured"}</p>
         </div>
         <div className="rounded-md bg-slate-900 p-4">
-          <p className="text-xs text-slate-500">Token0</p>
+          <p className="text-xs text-slate-500">WETH</p>
           <p className="mt-2 break-all text-sm font-medium text-white">{sepoliaRehypothecationPoolKey.currency0}</p>
         </div>
         <div className="rounded-md bg-slate-900 p-4">
-          <p className="text-xs text-slate-500">Token1</p>
+          <p className="text-xs text-slate-500">LINK</p>
           <p className="mt-2 break-all text-sm font-medium text-white">{sepoliaRehypothecationPoolKey.currency1}</p>
         </div>
       </section>
@@ -199,16 +199,16 @@ export function PoolManagerPage() {
           <button
             className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:border-slate-800 disabled:text-slate-600"
             disabled={!canWrite || pending}
-            onClick={() => runPoolAction(() => approvePoolRouterToken(sepoliaRehypothecationPoolKey.currency0), "Token0 approval confirmed.")}
+            onClick={() => runPoolAction(() => approvePoolRouterToken(sepoliaRehypothecationPoolKey.currency0), "WETH approval confirmed.")}
           >
-            Approve token0
+            Approve WETH
           </button>
           <button
             className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:border-slate-800 disabled:text-slate-600"
             disabled={!canWrite || pending}
-            onClick={() => runPoolAction(() => approvePoolRouterToken(sepoliaRehypothecationPoolKey.currency1), "Token1 approval confirmed.")}
+            onClick={() => runPoolAction(() => approvePoolRouterToken(sepoliaRehypothecationPoolKey.currency1), "LINK approval confirmed.")}
           >
-            Approve token1
+            Approve LINK
           </button>
         </div>
       </section>
@@ -240,7 +240,7 @@ export function PoolManagerPage() {
             <input className="h-10 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-sky-400" placeholder="Exact input amount" value={swapAmount} onChange={(event) => setSwapAmount(event.target.value)} />
             <label className="flex items-center gap-3 rounded-md border border-white/10 bg-slate-950 px-3 py-3 text-sm text-slate-300">
               <input type="checkbox" checked={swapZeroForOne} onChange={(event) => setSwapZeroForOne(event.target.checked)} />
-              Swap token0 to token1
+              Swap WETH to LINK
             </label>
           </div>
           <button className="mt-5 inline-flex h-10 items-center gap-2 rounded-md bg-sky-500 px-4 text-sm font-semibold text-slate-950 disabled:bg-slate-700 disabled:text-slate-400" disabled={!canWrite || !swapValid || pending} onClick={submitPoolSwap}>
