@@ -1,87 +1,88 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Activity,
   BadgeDollarSign,
-  BarChart3,
-  Clock,
   Droplets,
-  Layers3,
+  Gauge,
+  HandCoins,
+  PauseCircle,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
+import { LiveNumbersBar } from "@/components/home/live-numbers-bar";
 
 export default function Home() {
-  const stats = [
-    { label: "Contract-backed reads", value: "Markets, positions, oracle" },
-    { label: "Live writes", value: "Swap, hook, approval" },
-    { label: "Fallback views", value: "Only where ABI is missing" },
-  ];
-
-  const workflows = [
+  const outcomes = [
     {
-      title: "Trade fixed and floating exposure",
-      body: "Compare Aave floating rates against quoted fixed terms before opening a swap.",
-      icon: BarChart3,
+      title: "Dual yield",
+      body: "Earn Aave supply APY on top of your swap fees. 80% of your deposit works in Aave, 20% stays ready for swaps.",
+      icon: HandCoins,
     },
     {
-      title: "Manage positions from one place",
-      body: "Track margin health, top up collateral, and review portfolio obligations.",
-      icon: WalletCards,
+      title: "Automatic rebalancing",
+      body: "When a swap needs liquidity, the hook withdraws from Aave instantly. You never miss a trade.",
+      icon: Gauge,
     },
     {
-      title: "Liquidate unhealthy swaps",
-      body: "Scan eligible positions and submit liquidations with estimated bounty economics.",
+      title: "Emergency control",
+      body: "Owner can pause the hook or withdraw all Aave funds in one transaction. Full custody, always.",
       icon: ShieldCheck,
     },
-    {
-      title: "Operate the hook pool",
-      body: "Initialize the v4 pool, adjust liquidity, and submit pool swaps through the router.",
-      icon: Droplets,
-    },
   ];
 
-  const surfaces = [
-    { name: "Dashboard", detail: "Entry point for oracle snapshots and swap execution." },
-    { name: "Markets", detail: "On-chain market registry, order book, and market detail." },
-    { name: "Pool", detail: "PoolManager actions routed through the deployed hook router." },
-    { name: "Portfolio", detail: "Live positions and mark-to-market from contract state." },
+  const actions = [
+    { name: "Pool", detail: "Add or remove liquidity and watch your Aave yield accrue in real time." },
+    { name: "Admin", detail: "Configure the hook, set Aave mappings, pause operations, emergency withdraw." },
+    { name: "Portfolio", detail: "See your positions and how much yield has been generated." },
+    { name: "Markets", detail: "Browse active pools with rehypothecation enabled." },
+  ];
+
+  const flow = [
+    {
+      title: "You add liquidity",
+      body: "Tokens go into the Uniswap v4 pool.",
+      icon: Droplets,
+    },
+    {
+      title: "Hook deposits 80% to Aave",
+      body: "Your capital earns Aave yield automatically.",
+      icon: HandCoins,
+    },
+    {
+      title: "Swaps execute normally",
+      body: "The hook withdraws from Aave only when the pool needs it.",
+      icon: Activity,
+    },
   ];
 
   return (
     <div className="space-y-10">
       <section className="grid min-h-[calc(100vh-9rem)] items-center gap-8 py-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">Interest-rate swaps</p>
-          <h1 className="mt-4 max-w-3xl text-5xl font-semibold leading-tight text-white sm:text-6xl">
-            Drool
+          <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">Drool</p>
+          <h1 className="mt-4 max-w-4xl text-5xl font-semibold leading-tight text-white sm:text-6xl">
+            Your idle liquidity is leaving money on the table.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-            Trade synthetic fixed and floating Aave rate exposure, manage margin, and operate the hook pool from a
-            contract-backed DeFi workspace.
+            Drool is a Uniswap v4 hook that automatically puts idle LP capital to work in Aave, so you earn swap fees
+            and yield, simultaneously, with zero extra steps.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/dashboard"
+              href="/pool"
               className="inline-flex items-center justify-center gap-2 rounded-md bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
             >
-              Open dashboard
+              Add liquidity
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="/markets"
+              href="#how-it-works"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              View markets
-              <BarChart3 className="size-4" />
+              See how it works
+              <Activity className="size-4" />
             </Link>
-          </div>
-          <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
-            {stats.map((stat) => (
-              <div key={stat.label} className="border-l border-white/15 pl-4">
-                <p className="text-2xl font-semibold text-white">{stat.value}</p>
-                <p className="mt-1 text-sm text-slate-400">{stat.label}</p>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -89,28 +90,36 @@ export default function Home() {
           <div className="absolute inset-x-0 top-0 h-1 bg-sky-400" />
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div>
-              <p className="text-sm text-slate-400">Contract surface</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">Live reads and writes</h2>
+              <p className="text-sm text-slate-400">Capital routing</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">One LP deposit, two yield sources</h2>
             </div>
             <BadgeDollarSign className="size-6 text-emerald-300" />
           </div>
-          <div className="mt-6 grid gap-3">
-            {surfaces.map((surface) => (
-              <div key={surface.name} className="rounded-md bg-slate-950 p-4">
-                <p className="text-sm font-semibold text-white">{surface.name}</p>
-                <p className="mt-1 text-sm text-slate-400">{surface.detail}</p>
+          <div className="mt-6 grid gap-4">
+            {[
+              { label: "Deposited to Aave", value: "80%", tone: "text-emerald-300" },
+              { label: "Ready inside pool", value: "20%", tone: "text-sky-300" },
+              { label: "Extra LP steps", value: "0", tone: "text-white" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between rounded-md bg-slate-950 p-4">
+                <p className="text-sm text-slate-400">{item.label}</p>
+                <p className={`text-3xl font-semibold ${item.tone}`}>{item.value}</p>
               </div>
             ))}
           </div>
           <div className="mt-6 rounded-md bg-slate-950 p-4">
-            <p className="text-sm text-slate-400">Current status</p>
-            <p className="mt-2 text-lg font-semibold text-white">Use the dashboard and markets pages for live contract-backed data.</p>
+            <p className="text-sm text-slate-400">Hook behavior</p>
+            <p className="mt-2 text-lg font-semibold text-white">
+              Liquidity stays available for swaps while idle capital keeps earning in Aave.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 pb-8 md:grid-cols-2 xl:grid-cols-4">
-        {workflows.map((item) => {
+      <LiveNumbersBar />
+
+      <section className="grid gap-4 pb-8 md:grid-cols-3">
+        {outcomes.map((item) => {
           const Icon = item.icon;
 
           return (
@@ -123,44 +132,35 @@ export default function Home() {
         })}
       </section>
 
-      <section className="grid gap-8 py-8 lg:grid-cols-[0.85fr_1.15fr]">
+      <section id="how-it-works" className="grid gap-8 py-8 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">How Drool works</p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight text-white sm:text-4xl">
-            Built around the full lifecycle of a rate position.
+            Idle LP capital moves only when the pool can put it to work.
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
-            The app separates market discovery, swap execution, hook pool operations, collateral management, and liquidation
-            monitoring so each workflow stays focused.
+            Drool keeps liquidity usable for swaps while sending the idle portion into Aave in the background.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              title: "Quote",
-              body: "Review the quoted fixed side against the latest floating-rate history.",
-              icon: BarChart3,
-            },
-            {
-              title: "Open",
-              body: "Enter notional, term, leverage, and margin before submitting a swap.",
-              icon: Layers3,
-            },
-            {
-              title: "Maintain",
-              body: "Watch margin health and respond before liquidation thresholds are reached.",
-              icon: ShieldCheck,
-            },
-          ].map((step) => {
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-stretch">
+          {flow.map((step, index) => {
             const Icon = step.icon;
 
-            return (
+            return [
               <article key={step.title} className="rounded-lg border border-white/10 bg-slate-900 p-5">
-                <Icon className="size-5 text-emerald-300" />
-                <h3 className="mt-4 text-lg font-semibold text-white">{step.title}</h3>
+                <div className="flex size-10 items-center justify-center rounded-md bg-slate-950 text-emerald-300">
+                  <Icon className="size-5" />
+                </div>
+                <p className="mt-5 text-xs font-medium uppercase text-slate-500">Step {index + 1}</p>
+                <h3 className="mt-2 text-lg font-semibold text-white">{step.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-400">{step.body}</p>
-              </article>
-            );
+              </article>,
+              index < flow.length - 1 ? (
+                <div key={`${step.title}-arrow`} className="hidden items-center justify-center text-sky-300 sm:flex">
+                  <ArrowRight className="size-5" />
+                </div>
+              ) : null,
+            ];
           })}
         </div>
       </section>
@@ -168,8 +168,8 @@ export default function Home() {
       <section className="py-8">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">App surfaces</p>
-            <h2 className="mt-3 text-3xl font-semibold text-white">What is currently live in the UI</h2>
+            <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">What you can do</p>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Manage liquidity, yield, and hook controls.</h2>
           </div>
           <Link
             href="/markets"
@@ -180,10 +180,10 @@ export default function Home() {
           </Link>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-4">
-          {surfaces.map((surface) => (
-            <article key={surface.name} className="rounded-lg border border-white/10 bg-slate-900 p-5">
-              <h3 className="text-lg font-semibold text-white">{surface.name}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{surface.detail}</p>
+          {actions.map((action) => (
+            <article key={action.name} className="rounded-lg border border-white/10 bg-slate-900 p-5">
+              <h3 className="text-lg font-semibold text-white">{action.name}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{action.detail}</p>
             </article>
           ))}
         </div>
@@ -191,19 +191,19 @@ export default function Home() {
 
       <section className="grid gap-6 py-8 lg:grid-cols-2">
         <div className="rounded-lg border border-white/10 bg-slate-900 p-6">
-          <Clock className="size-6 text-sky-300" />
-          <h2 className="mt-5 text-2xl font-semibold text-white">Designed for repeated monitoring</h2>
+          <WalletCards className="size-6 text-sky-300" />
+          <h2 className="mt-5 text-2xl font-semibold text-white">Your yield stays visible</h2>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            Portfolio views, liquidation tables, and market detail screens are structured for fast scanning rather than
-            one-off demos. Drool keeps the current action clear once a position is open.
+            Portfolio and pool views are structured for checking active liquidity, accrued yield, and current hook status
+            without digging through contracts.
           </p>
         </div>
         <div className="rounded-lg border border-white/10 bg-slate-900 p-6">
-          <Droplets className="size-6 text-emerald-300" />
-          <h2 className="mt-5 text-2xl font-semibold text-white">Hook pool actions are available to users</h2>
+          <PauseCircle className="size-6 text-emerald-300" />
+          <h2 className="mt-5 text-2xl font-semibold text-white">Operators keep final control</h2>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            The Pool page exposes initialization, liquidity, approvals, and pool swaps through the deployed router
-            without requiring access to the owner admin console.
+            The admin console exposes configuration, pausing, ownership transfer, and emergency withdrawal for the
+            deployed hook.
           </p>
         </div>
       </section>
@@ -212,22 +212,22 @@ export default function Home() {
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.22em] text-sky-300">Enter the app</p>
-            <h2 className="mt-3 text-3xl font-semibold text-white">Start from the dashboard or jump into markets.</h2>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Add liquidity or inspect active rehypothecation pools.</h2>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/dashboard"
+              href="/pool"
               className="inline-flex items-center justify-center gap-2 rounded-md bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
             >
-              Open dashboard
+              Add liquidity
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="/portfolio"
+              href="/markets"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              View portfolio
-              <WalletCards className="size-4" />
+              Browse markets
+              <Droplets className="size-4" />
             </Link>
           </div>
         </div>

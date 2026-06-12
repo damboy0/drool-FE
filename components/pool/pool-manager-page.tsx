@@ -1,13 +1,14 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Droplets, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Droplets, ExternalLink, Wallet } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { encodeAbiParameters, keccak256 } from "viem";
 import { sepolia } from "wagmi/chains";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { addresses, sepoliaRehypothecationPoolKey } from "@/contracts/addresses";
+import { addresses, sepoliaContracts, sepoliaRehypothecationPoolKey } from "@/contracts/addresses";
 import {
   approvePoolRouterToken,
   initializeHookPool,
@@ -15,7 +16,8 @@ import {
   swapHookPool,
 } from "@/contracts/pool-router";
 import { wagmiConfig } from "@/lib/wagmi";
-import type { Address } from "@/types";
+import type { Address, Hash, PoolId } from "@/types";
+import type { LiquidityActionKind, LiquidityActionRecord } from "@/types/liquidity-action";
 
 const ZERO_BYTES32 = `0x${"0".repeat(64)}` as const;
 const MIN_SQRT_PRICE_PLUS_ONE = 4_295_128_740n;
@@ -35,18 +37,57 @@ function parseUnsignedBigInt(value: string) {
   return BigInt(value.trim());
 }
 
+function derivePoolId(hook: Address): PoolId {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            { name: "currency0", type: "address" },
+            { name: "currency1", type: "address" },
+            { name: "fee", type: "uint24" },
+            { name: "tickSpacing", type: "int24" },
+            { name: "hooks", type: "address" },
+          ],
+        },
+      ],
+      [
+        {
+          currency0: sepoliaRehypothecationPoolKey.currency0,
+          currency1: sepoliaRehypothecationPoolKey.currency1,
+          fee: sepoliaRehypothecationPoolKey.fee,
+          tickSpacing: sepoliaRehypothecationPoolKey.tickSpacing,
+          hooks: hook,
+        },
+      ],
+    ),
+  ) as PoolId;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export function PoolManagerPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChainAsync, isPending: switchingChain } = useSwitchChain();
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
+  const [liquidityActions, setLiquidityActions] = useState<LiquidityActionRecord[]>([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
   const [liquidityDelta, setLiquidityDelta] = useState("1000000000000000000");
   const [tickLower, setTickLower] = useState("-600");
   const [tickUpper, setTickUpper] = useState("600");
   const [liquiditySalt, setLiquiditySalt] = useState<string>(ZERO_BYTES32);
   const [swapAmount, setSwapAmount] = useState("1000");
   const [swapZeroForOne, setSwapZeroForOne] = useState(true);
+  const hookAddress = addresses.hook ?? sepoliaContracts.hook;
+  const poolId = useMemo(() => derivePoolId(hookAddress), [hookAddress]);
 
   const isSepolia = chainId === sepolia.id;
   const canWrite = Boolean(isConnected && isSepolia && addresses.poolRouter);
@@ -61,6 +102,35 @@ export function PoolManagerPage() {
     && isBytes32(liquiditySalt);
   const swapValid = parsedSwapAmount !== undefined && parsedSwapAmount > 0n;
 
+  async function loadLiquidityActions(wallet = address) {
+    if (!wallet) {
+      setLiquidityActions([]);
+      return;
+    }
+
+    setActionsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        wallet,
+        hook: hookAddress,
+        poolId,
+      });
+      const response = await fetch(`/api/liquidity-actions?${params.toString()}`);
+
+      if (!response.ok) throw new Error("Unable to load liquidity activity.");
+
+      setLiquidityActions(await response.json() as LiquidityActionRecord[]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load liquidity activity.");
+    } finally {
+      setActionsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadLiquidityActions();
+  }, [address, hookAddress, poolId]);
+
   async function ensureSepolia() {
     if (isSepolia) return true;
 
@@ -74,7 +144,44 @@ export function PoolManagerPage() {
     }
   }
 
-  async function runPoolAction(action: () => Promise<`0x${string}`>, success: string) {
+  async function saveLiquidityAction({
+    txHash,
+    action,
+    absoluteDelta,
+  }: {
+    txHash: Hash;
+    action: LiquidityActionKind;
+    absoluteDelta: bigint;
+  }) {
+    if (!address) return;
+
+    const response = await fetch("/api/liquidity-actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        wallet: address,
+        hook: hookAddress,
+        poolId,
+        txHash,
+        action,
+        pair: "WETH/LINK",
+        tickLower: parsedTickLower,
+        tickUpper: parsedTickUpper,
+        liquidityDelta: absoluteDelta.toString(),
+        salt: liquiditySalt,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Liquidity transaction confirmed, but saving activity failed.");
+    }
+  }
+
+  async function runPoolAction(
+    action: () => Promise<Hash>,
+    success: string,
+    onConfirmed?: (hash: Hash) => Promise<void>,
+  ) {
     if (!isConnected || !address) {
       toast.error("Connect a wallet to use the pool.");
       return;
@@ -92,10 +199,12 @@ export function PoolManagerPage() {
       const hash = await action();
       toast.success(`Submitted pool tx: ${hash.slice(0, 10)}...`);
       await waitForTransactionReceipt(wagmiConfig, { hash });
+      if (onConfirmed) await onConfirmed(hash);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["hook-status"] }),
         queryClient.invalidateQueries({ queryKey: ["markets"] }),
       ]);
+      await loadLiquidityActions();
       toast.success(success);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Pool transaction failed.");
@@ -119,6 +228,11 @@ export function PoolManagerPage() {
         address as Address,
       ),
       multiplier > 0n ? "Liquidity added." : "Liquidity removed.",
+      (hash) => saveLiquidityAction({
+        txHash: hash,
+        action: multiplier > 0n ? "add" : "remove",
+        absoluteDelta,
+      }),
     );
   }
 
@@ -249,6 +363,65 @@ export function PoolManagerPage() {
           </button>
         </section>
       </div>
+
+      <section className="rounded-lg border border-white/10 bg-slate-900 p-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm text-slate-400">Your liquidity activity</p>
+            <h2 className="mt-1 text-xl font-semibold text-white">Confirmed adds and removes from this app</h2>
+          </div>
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:border-slate-800 disabled:text-slate-600"
+            disabled={!address || actionsLoading}
+            onClick={() => loadLiquidityActions()}
+          >
+            {actionsLoading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+
+        {!address ? (
+          <p className="mt-5 rounded-md border border-white/10 bg-slate-950 p-4 text-sm text-slate-400">
+            Connect a wallet to view saved liquidity activity.
+          </p>
+        ) : liquidityActions.length ? (
+          <div className="mt-5 grid gap-3">
+            {liquidityActions.map((item) => (
+              <article key={item.id} className="rounded-md border border-white/10 bg-slate-950 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={item.action === "add" ? "text-emerald-300" : "text-amber-300"}>
+                        {item.action === "add" ? "Added liquidity" : "Removed liquidity"}
+                      </span>
+                      <span className="text-sm text-slate-500">{item.pair}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-400">
+                      Ticks {item.tickLower} to {item.tickUpper} / liquidity {item.liquidityDelta}
+                    </p>
+                    <p className="mt-1 break-all text-xs text-slate-500">Salt {item.salt}</p>
+                  </div>
+                  <div className="shrink-0 text-left sm:text-right">
+                    <p className="text-sm text-slate-400">{formatDate(item.createdAt)}</p>
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${item.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-sky-300 hover:text-sky-200"
+                    >
+                      View tx
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-5 rounded-md border border-white/10 bg-slate-950 p-4 text-sm text-slate-400">
+            No confirmed liquidity actions have been saved for this wallet yet.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
